@@ -37,6 +37,7 @@ static const char *RcsId = "$Id $";
 
 #include <tango.h>
 
+#ifndef LINUX64_NO_CRASH_REPORT //maxipix 64 bits, because crash report not yet supported
 
 #if defined(ENABLE_CRASH_REPORT)
 # include <crashreporting/crash_report.h>
@@ -47,9 +48,14 @@ static const char *RcsId = "$Id $";
 
 DECLARE_CRASH_HANDLER;
 
+#endif
+
 int main(int argc,char *argv[])
 {
+
+#ifndef LINUX64_NO_CRASH_REPORT //maxipix 64 bits
 	INSTALL_CRASH_HANDLER;
+#endif
     
     Tango::Util *tg;
 

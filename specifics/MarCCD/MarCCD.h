@@ -47,6 +47,7 @@
 
 //- YAT/YAT4TANGO
 #include <yat4tango/PropertyHelper.h>
+#include <yat4tango/InnerAppender.h>
 
 #include "lima/HwInterface.h"
 #include "lima/CtControl.h"
@@ -119,9 +120,13 @@ public :
  */
 	string	detectorTargetPath;
 /**
- *	During acquisition, this is the time before declaring that is no available image returned by detector. (in ms)
+ *	The timeout before the Reader declares that there are no images in the directory target path. (in ms)
  */
 	Tango::DevUShort	readerTimeout;
+/**
+ *	The number of retry before the Reader declares that there are no images in the directory target path.
+ */
+	Tango::DevLong	readerNbRetry;
 /**
  *	
  */

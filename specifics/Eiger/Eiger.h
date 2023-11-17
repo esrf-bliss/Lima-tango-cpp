@@ -37,21 +37,28 @@
 
 //- YAT/YAT4TANGO
 #include <yat4tango/PropertyHelper.h>
+#include <yat4tango/InnerAppender.h>
 
 /**
  * @author	$Author:  $
  * @version	$Revision:  $
  */
 
- //	Add your own constant definitions here.
- //-----------------------------------------------
+//	Add your own constant definitions here.
+//-----------------------------------------------
 #include "Factory.h"
 #include "lima/HwInterface.h"
 #include "lima/CtControl.h"
 #include "lima/CtAcquisition.h"
 #include "lima/CtImage.h"
+#include "lima/CtSaving.h"
 #include "EigerInterface.h"
 #include "EigerCamera.h"
+
+//- STL 
+#include <algorithm>
+
+#define MAX_ATTRIBUTE_STRING_LENGTH     256
 
 //using namespace lima::Eiger;
 using namespace lima;
@@ -76,19 +83,43 @@ namespace Eiger_ns
 
 class Eiger : public Tango::Device_4Impl
 {
-public :
-	//	Add your own data members here
-	//-----------------------------------------
-	Tango::DevDouble attr_thresholdEnergy_read_cache;
-	Tango::DevDouble attr_photonEnergy_read_cache;
+public:
+    //	Add your own data members here
+    //-----------------------------------------
+    Tango::DevDouble attr_thresholdEnergy_read_cache;
+    Tango::DevDouble attr_photonEnergy_read_cache;
+    Tango::DevBoolean attr_compression_read_cache;
+    Tango::DevBoolean attr_autoSummation_read_cache;
+    Tango::DevBoolean attr_countrateCorrection_read_cache;
+    Tango::DevBoolean attr_virtualPixelCorrection_read_cache;
+    Tango::DevBoolean attr_flatfieldCorrection_read_cache;
+    Tango::DevBoolean attr_pixelMask_read_cache;
+    Tango::DevDouble attr_temperature_read_cache;
+    Tango::DevDouble attr_humidity_read_cache;
+    Tango::DevDouble attr_wavelength_read_cache;
+    std::string attr_roiMode_read_cache;    
+    Tango::DevDouble attr_beamCenterX_read_cache;
+    Tango::DevDouble attr_beamCenterY_read_cache;
+    Tango::DevDouble attr_detectorDistance_read_cache;
+    Tango::DevDouble attr_detectorReadoutTime_read_cache;
+    std::string attr_compressionType_read_cache;
+    std::string attr_dataCollectionDate_read_cache;
+    Tango::DevDouble attr_chiIncrement_read_cache;
+    Tango::DevDouble attr_chiStart_read_cache;
+    Tango::DevDouble attr_kappaIncrement_read_cache;
+    Tango::DevDouble attr_kappaStart_read_cache;
+    Tango::DevDouble attr_omegaIncrement_read_cache;
+    Tango::DevDouble attr_omegaStart_read_cache;
+    Tango::DevDouble attr_phiIncrement_read_cache;
+    Tango::DevDouble attr_phiStart_read_cache;
 
-	//	Here is the Start of the automatic code generation part
-	//-------------------------------------------------------------	
-/**
- *	@name attributes
- *	Attribute member data.
- */
-//@{
+    //	Here is the Start of the automatic code generation part
+    //-------------------------------------------------------------	
+    /**
+     *	@name attributes
+     *	Attribute member data.
+     */
+    //@{
 		Tango::DevBoolean	*attr_countrateCorrection_read;
 		Tango::DevBoolean	attr_countrateCorrection_write;
 		Tango::DevBoolean	*attr_flatfieldCorrection_read;
@@ -97,124 +128,234 @@ public :
 		Tango::DevBoolean	attr_pixelMask_write;
 		Tango::DevBoolean	*attr_virtualPixelCorrection_read;
 		Tango::DevBoolean	attr_virtualPixelCorrection_write;
-		Tango::DevBoolean	*attr_efficiencyCorrection_read;
-		Tango::DevBoolean	attr_efficiencyCorrection_write;
+		Tango::DevString	*attr_managedMode_read;
+		Tango::DevString	*attr_dataCollectionDate_read;
 		Tango::DevDouble	*attr_thresholdEnergy_read;
 		Tango::DevDouble	attr_thresholdEnergy_write;
 		Tango::DevDouble	*attr_photonEnergy_read;
 		Tango::DevDouble	attr_photonEnergy_write;
+		Tango::DevDouble	*attr_wavelength_read;
+		Tango::DevDouble	attr_wavelength_write;
+		Tango::DevString	*attr_roiMode_read;
+		Tango::DevString	attr_roiMode_write;
+		Tango::DevDouble	*attr_beamCenterX_read;
+		Tango::DevDouble	attr_beamCenterX_write;
+		Tango::DevDouble	*attr_beamCenterY_read;
+		Tango::DevDouble	attr_beamCenterY_write;
+		Tango::DevDouble	*attr_detectorDistance_read;
+		Tango::DevDouble	attr_detectorDistance_write;
+		Tango::DevDouble	*attr_detectorReadoutTime_read;
 		Tango::DevDouble	*attr_temperature_read;
 		Tango::DevDouble	*attr_humidity_read;
+		Tango::DevDouble	*attr_chiIncrement_read;
+		Tango::DevDouble	attr_chiIncrement_write;
+		Tango::DevDouble	*attr_chiStart_read;
+		Tango::DevDouble	attr_chiStart_write;
+		Tango::DevDouble	*attr_kappaIncrement_read;
+		Tango::DevDouble	attr_kappaIncrement_write;
+		Tango::DevDouble	*attr_kappaStart_read;
+		Tango::DevDouble	attr_kappaStart_write;
+		Tango::DevDouble	*attr_omegaIncrement_read;
+		Tango::DevDouble	attr_omegaIncrement_write;
+		Tango::DevDouble	*attr_omegaStart_read;
+		Tango::DevDouble	attr_omegaStart_write;
+		Tango::DevDouble	*attr_phiIncrement_read;
+		Tango::DevDouble	attr_phiIncrement_write;
+		Tango::DevDouble	*attr_phiStart_read;
+		Tango::DevDouble	attr_phiStart_write;
+		Tango::DevBoolean	*attr_autoSummation_read;
+		Tango::DevBoolean	attr_autoSummation_write;
 		Tango::DevBoolean	*attr_compression_read;
 		Tango::DevBoolean	attr_compression_write;
+		Tango::DevString	*attr_compressionType_read;
+		Tango::DevString	attr_compressionType_write;
+		Tango::DevString	*attr_softwareVersion_read;
+		Tango::DevLong	*attr_nbTriggers_read;
+		Tango::DevLong	attr_nbTriggers_write;
+		Tango::DevLong	*attr_nbFramesPerTrigger_read;
+		Tango::DevLong	attr_nbFramesPerTrigger_write;
 //@}
 
-/**
- * @name Device properties
- * Device properties member data.
- */
-//@{
+    /**
+     * @name Device properties
+     * Device properties member data.
+     */
+    //@{
 /**
  *	Eiger server IP address (ex: 192.168.0.1)
  */
 	string	detectorIP;
 /**
- *	Path where the Eiger lima plugin will download the file acquired during the last
- *	acquisition. (ex: /tmp )
+ *	Define the timestamp type of each frame: <br>
+ *	- RELATIVE : The time difference between the moment of reading the frame and the start acquisition time<br>
+ *	- ABSOLUTE : The time at the moment of reading the frame from detector<br>
  */
-	string	targetPath;
+	string	timestampType;
 /**
- *	Stores the value of countrateCorrection
+ *	Curl delay in ms. this is used as a sleep delay for waiting the curl responses
+ */
+	Tango::DevDouble	curlDelayMs;
+/**
+ *	Enable/Disable downloading data files from DCU.
+ *	Do not download data files (master+data) [by default]
+ */
+	Tango::DevBoolean	downloadDataFile;
+/**
+ *	If True: nbFrames = memorized values of NbTriggers * NbFramesPerTrigger (case on PX1 beamline)
+ *	If False: nbFrames = memorized nbFrames (case on Swing, Sixs beamlines)
+ */
+	Tango::DevBoolean	nbFramesPerTriggerIsMaster;
+/**
+ *	Memorize the value of countrateCorrection attribute.
  */
 	Tango::DevBoolean	memorizedCountrateCorrection;
 /**
- *	Stores the value of flatfieldCorrection
+ *	Memorize the value of flatfieldCorrection attribute.
  */
 	Tango::DevBoolean	memorizedFlatfieldCorrection;
 /**
- *	Stores the value of pixelMask
+ *	Memorize the value of pixelMask attribute.
  */
 	Tango::DevBoolean	memorizedPixelMask;
 /**
- *	Stores the value of virtualPixelCorrection
+ *	Memorize the value of virtualPixelCorrection attribute.
  */
 	Tango::DevBoolean	memorizedVirtualPixelCorrection;
 /**
- *	Stores the value of efficiencyCorrection
- */
-	Tango::DevBoolean	memorizedEfficiencyCorrection;
-/**
- *	Stores the value of thresholdEnergy
- */
-	Tango::DevDouble	memorizedThresholdEnergy;
-/**
- *	Stores the value of photonEnergy
+ *	Memorize the value of photonEnergy attribute.
  */
 	Tango::DevDouble	memorizedPhotonEnergy;
 /**
- *	Stores the value of compression
+ *	Memorize the value of autoSummation attribute.
+ */
+	Tango::DevBoolean	memorizedAutoSummation;
+/**
+ *	Memorize the value of compression attribute.
  */
 	Tango::DevBoolean	memorizedCompression;
+/**
+ *	Memorize the value of compressionType attribute.
+ */
+	string	memorizedCompressionType;
+/**
+ *	Memorize the value of roiMode attribute.
+ */
+	string	memorizedRoiMode;
+/**
+ *	Memorize the value of beamCenterX attribute.
+ */
+	Tango::DevDouble	memorizedBeamCenterX;
+/**
+ *	Memorize the value of beamCenterY attribute.
+ */
+	Tango::DevDouble	memorizedBeamCenterY;
+/**
+ *	Memorize the value of detectorDistance attribute.
+ */
+	Tango::DevDouble	memorizedDetectorDistance;
+/**
+ *	Memorize the value of chiIncrement attribute.
+ */
+	Tango::DevDouble	memorizedChiIncrement;
+/**
+ *	Memorize the value of chiStart attribute.
+ */
+	Tango::DevDouble	memorizedChiStart;
+/**
+ *	Memorize the value of kappaIncrement attribute.
+ */
+	Tango::DevDouble	memorizedKappaIncrement;
+/**
+ *	Memorize the value of kappaStart attribute.
+ */
+	Tango::DevDouble	memorizedKappaStart;
+/**
+ *	Memorize the value of omegaIncrement attribute.
+ */
+	Tango::DevDouble	memorizedOmegaIncrement;
+/**
+ *	Memorize the value of omegaStart attribute.
+ */
+	Tango::DevDouble	memorizedOmegaStart;
+/**
+ *	Memorize the value of phiIncrement attribute.
+ */
+	Tango::DevDouble	memorizedPhiIncrement;
+/**
+ *	Memorize the value of phiStart attribute.
+ */
+	Tango::DevDouble	memorizedPhiStart;
+/**
+ *	Memorize the value of nbTriggers attribute.
+ */
+	Tango::DevLong	memorizedNbTriggers;
+/**
+ *	Memorize the value of nbFramesPerTrigger attribute.
+ */
+	Tango::DevLong	memorizedNbFramesPerTrigger;
 //@}
 
-/**
- *	@name Device properties
- *	Device property member data.
- */
-//@{
-//@}
+    /**
+     *	@name Device properties
+     *	Device property member data.
+     */
+    //@{
+    //@}
 
-/**@name Constructors
- * Miscellaneous constructors */
-//@{
-/**
- * Constructs a newly allocated Command object.
- *
- *	@param cl	Class.
- *	@param s 	Device Name
- */
-	Eiger(Tango::DeviceClass *cl,string &s);
-/**
- * Constructs a newly allocated Command object.
- *
- *	@param cl	Class.
- *	@param s 	Device Name
- */
-	Eiger(Tango::DeviceClass *cl,const char *s);
-/**
- * Constructs a newly allocated Command object.
- *
- *	@param cl	Class.
- *	@param s 	Device name
- *	@param d	Device description.
- */
-	Eiger(Tango::DeviceClass *cl,const char *s,const char *d);
-//@}
+    /**@name Constructors
+     * Miscellaneous constructors */
+    //@{
+    /**
+     * Constructs a newly allocated Command object.
+     *
+     *	@param cl	Class.
+     *	@param s 	Device Name
+     */
+    Eiger(Tango::DeviceClass *cl, string &s);
+    /**
+     * Constructs a newly allocated Command object.
+     *
+     *	@param cl	Class.
+     *	@param s 	Device Name
+     */
+    Eiger(Tango::DeviceClass *cl, const char *s);
+    /**
+     * Constructs a newly allocated Command object.
+     *
+     *	@param cl	Class.
+     *	@param s 	Device name
+     *	@param d	Device description.
+     */
+    Eiger(Tango::DeviceClass *cl, const char *s, const char *d);
+    //@}
 
-/**@name Destructor
- * Only one destructor is defined for this class */
-//@{
-/**
- * The object destructor.
- */	
-	~Eiger() {delete_device();};
-/**
- *	will be called at device destruction or at init command.
- */
-	void delete_device();
-//@}
+    /**@name Destructor
+     * Only one destructor is defined for this class */
+    //@{
+        /**
+     * The object destructor.
+     */
+    ~Eiger()
+    {
+        delete_device();
+    };
+    /**
+     *	will be called at device destruction or at init command.
+     */
+    void delete_device();
+    //@}
 
-	
-/**@name Miscellaneous methods */
-//@{
-/**
- *	Initialize the device
- */
-	virtual void init_device();
-/**
- *	Always executed method before execution command method.
- */
-	virtual void always_executed_hook();
+
+    /**@name Miscellaneous methods */
+    //@{
+    /**
+     *	Initialize the device
+     */
+    virtual void init_device();
+    /**
+     *	Always executed method before execution command method.
+     */
+    virtual void always_executed_hook();
 
 //@}
 
@@ -260,13 +401,13 @@ public :
  */
 	virtual void write_virtualPixelCorrection(Tango::WAttribute &attr);
 /**
- *	Extract real attribute values for efficiencyCorrection acquisition result.
+ *	Extract real attribute values for managedMode acquisition result.
  */
-	virtual void read_efficiencyCorrection(Tango::Attribute &attr);
+	virtual void read_managedMode(Tango::Attribute &attr);
 /**
- *	Write efficiencyCorrection attribute values to hardware.
+ *	Extract real attribute values for dataCollectionDate acquisition result.
  */
-	virtual void write_efficiencyCorrection(Tango::WAttribute &attr);
+	virtual void read_dataCollectionDate(Tango::Attribute &attr);
 /**
  *	Extract real attribute values for thresholdEnergy acquisition result.
  */
@@ -284,6 +425,50 @@ public :
  */
 	virtual void write_photonEnergy(Tango::WAttribute &attr);
 /**
+ *	Extract real attribute values for wavelength acquisition result.
+ */
+	virtual void read_wavelength(Tango::Attribute &attr);
+/**
+ *	Write wavelength attribute values to hardware.
+ */
+	virtual void write_wavelength(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for roiMode acquisition result.
+ */
+	virtual void read_roiMode(Tango::Attribute &attr);
+/**
+ *	Write roiMode attribute values to hardware.
+ */
+	virtual void write_roiMode(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for beamCenterX acquisition result.
+ */
+	virtual void read_beamCenterX(Tango::Attribute &attr);
+/**
+ *	Write beamCenterX attribute values to hardware.
+ */
+	virtual void write_beamCenterX(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for beamCenterY acquisition result.
+ */
+	virtual void read_beamCenterY(Tango::Attribute &attr);
+/**
+ *	Write beamCenterY attribute values to hardware.
+ */
+	virtual void write_beamCenterY(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for detectorDistance acquisition result.
+ */
+	virtual void read_detectorDistance(Tango::Attribute &attr);
+/**
+ *	Write detectorDistance attribute values to hardware.
+ */
+	virtual void write_detectorDistance(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for detectorReadoutTime acquisition result.
+ */
+	virtual void read_detectorReadoutTime(Tango::Attribute &attr);
+/**
  *	Extract real attribute values for temperature acquisition result.
  */
 	virtual void read_temperature(Tango::Attribute &attr);
@@ -292,6 +477,78 @@ public :
  */
 	virtual void read_humidity(Tango::Attribute &attr);
 /**
+ *	Extract real attribute values for chiIncrement acquisition result.
+ */
+	virtual void read_chiIncrement(Tango::Attribute &attr);
+/**
+ *	Write chiIncrement attribute values to hardware.
+ */
+	virtual void write_chiIncrement(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for chiStart acquisition result.
+ */
+	virtual void read_chiStart(Tango::Attribute &attr);
+/**
+ *	Write chiStart attribute values to hardware.
+ */
+	virtual void write_chiStart(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for kappaIncrement acquisition result.
+ */
+	virtual void read_kappaIncrement(Tango::Attribute &attr);
+/**
+ *	Write kappaIncrement attribute values to hardware.
+ */
+	virtual void write_kappaIncrement(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for kappaStart acquisition result.
+ */
+	virtual void read_kappaStart(Tango::Attribute &attr);
+/**
+ *	Write kappaStart attribute values to hardware.
+ */
+	virtual void write_kappaStart(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for omegaIncrement acquisition result.
+ */
+	virtual void read_omegaIncrement(Tango::Attribute &attr);
+/**
+ *	Write omegaIncrement attribute values to hardware.
+ */
+	virtual void write_omegaIncrement(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for omegaStart acquisition result.
+ */
+	virtual void read_omegaStart(Tango::Attribute &attr);
+/**
+ *	Write omegaStart attribute values to hardware.
+ */
+	virtual void write_omegaStart(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for phiIncrement acquisition result.
+ */
+	virtual void read_phiIncrement(Tango::Attribute &attr);
+/**
+ *	Write phiIncrement attribute values to hardware.
+ */
+	virtual void write_phiIncrement(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for phiStart acquisition result.
+ */
+	virtual void read_phiStart(Tango::Attribute &attr);
+/**
+ *	Write phiStart attribute values to hardware.
+ */
+	virtual void write_phiStart(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for autoSummation acquisition result.
+ */
+	virtual void read_autoSummation(Tango::Attribute &attr);
+/**
+ *	Write autoSummation attribute values to hardware.
+ */
+	virtual void write_autoSummation(Tango::WAttribute &attr);
+/**
  *	Extract real attribute values for compression acquisition result.
  */
 	virtual void read_compression(Tango::Attribute &attr);
@@ -299,6 +556,34 @@ public :
  *	Write compression attribute values to hardware.
  */
 	virtual void write_compression(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for compressionType acquisition result.
+ */
+	virtual void read_compressionType(Tango::Attribute &attr);
+/**
+ *	Write compressionType attribute values to hardware.
+ */
+	virtual void write_compressionType(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for softwareVersion acquisition result.
+ */
+	virtual void read_softwareVersion(Tango::Attribute &attr);
+/**
+ *	Extract real attribute values for nbTriggers acquisition result.
+ */
+	virtual void read_nbTriggers(Tango::Attribute &attr);
+/**
+ *	Write nbTriggers attribute values to hardware.
+ */
+	virtual void write_nbTriggers(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for nbFramesPerTrigger acquisition result.
+ */
+	virtual void read_nbFramesPerTrigger(Tango::Attribute &attr);
+/**
+ *	Write nbFramesPerTrigger attribute values to hardware.
+ */
+	virtual void write_nbFramesPerTrigger(Tango::WAttribute &attr);
 /**
  *	Read/Write allowed for countrateCorrection attribute.
  */
@@ -316,9 +601,13 @@ public :
  */
 	virtual bool is_virtualPixelCorrection_allowed(Tango::AttReqType type);
 /**
- *	Read/Write allowed for efficiencyCorrection attribute.
+ *	Read/Write allowed for managedMode attribute.
  */
-	virtual bool is_efficiencyCorrection_allowed(Tango::AttReqType type);
+	virtual bool is_managedMode_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for dataCollectionDate attribute.
+ */
+	virtual bool is_dataCollectionDate_allowed(Tango::AttReqType type);
 /**
  *	Read/Write allowed for thresholdEnergy attribute.
  */
@@ -328,6 +617,30 @@ public :
  */
 	virtual bool is_photonEnergy_allowed(Tango::AttReqType type);
 /**
+ *	Read/Write allowed for wavelength attribute.
+ */
+	virtual bool is_wavelength_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for roiMode attribute.
+ */
+	virtual bool is_roiMode_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for beamCenterX attribute.
+ */
+	virtual bool is_beamCenterX_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for beamCenterY attribute.
+ */
+	virtual bool is_beamCenterY_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for detectorDistance attribute.
+ */
+	virtual bool is_detectorDistance_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for detectorReadoutTime attribute.
+ */
+	virtual bool is_detectorReadoutTime_allowed(Tango::AttReqType type);
+/**
  *	Read/Write allowed for temperature attribute.
  */
 	virtual bool is_temperature_allowed(Tango::AttReqType type);
@@ -336,15 +649,94 @@ public :
  */
 	virtual bool is_humidity_allowed(Tango::AttReqType type);
 /**
+ *	Read/Write allowed for chiIncrement attribute.
+ */
+	virtual bool is_chiIncrement_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for chiStart attribute.
+ */
+	virtual bool is_chiStart_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for kappaIncrement attribute.
+ */
+	virtual bool is_kappaIncrement_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for kappaStart attribute.
+ */
+	virtual bool is_kappaStart_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for omegaIncrement attribute.
+ */
+	virtual bool is_omegaIncrement_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for omegaStart attribute.
+ */
+	virtual bool is_omegaStart_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for phiIncrement attribute.
+ */
+	virtual bool is_phiIncrement_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for phiStart attribute.
+ */
+	virtual bool is_phiStart_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for autoSummation attribute.
+ */
+	virtual bool is_autoSummation_allowed(Tango::AttReqType type);
+/**
  *	Read/Write allowed for compression attribute.
  */
 	virtual bool is_compression_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for compressionType attribute.
+ */
+	virtual bool is_compressionType_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for softwareVersion attribute.
+ */
+	virtual bool is_softwareVersion_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for nbTriggers attribute.
+ */
+	virtual bool is_nbTriggers_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for nbFramesPerTrigger attribute.
+ */
+	virtual bool is_nbFramesPerTrigger_allowed(Tango::AttReqType type);
+/**
+ *	Execution allowed for Initialize command.
+ */
+	virtual bool is_Initialize_allowed(const CORBA::Any &any);
+/**
+ *	Execution allowed for Disarm command.
+ */
+	virtual bool is_Disarm_allowed(const CORBA::Any &any);
+/**
+ *	Execution allowed for UpdateTH command.
+ */
+	virtual bool is_UpdateTH_allowed(const CORBA::Any &any);
 /**
  * This command gets the device state (stored in its <i>device_state</i> data member) and returns it to the caller.
  *	@return	State Code
  *	@exception DevFailed
  */
 	virtual Tango::DevState	dev_state();
+/**
+ * 
+ *	@exception DevFailed
+ */
+	void	initialize();
+/**
+ * 
+ *	@exception DevFailed
+ */
+	void	disarm();
+/**
+ * 
+ *	@exception DevFailed
+ */
+	void	update_th();
 
 /**
  *	Read the device properties from database
@@ -352,23 +744,28 @@ public :
 	 void get_device_property();
 //@}
 
-	//	Here is the end of the automatic code generation part
-	//-------------------------------------------------------------	
+    //	Here is the end of the automatic code generation part
+    //-------------------------------------------------------------	
 
+    bool is_device_initialized()
+    {
+        return m_is_device_initialized;
+    };
 
+protected:
+    //	Add your own data members here
+    //-----------------------------------------
+    bool m_is_device_initialized;
+    stringstream m_status_message;
+    void write_at_init();
 
-protected :	
-	//	Add your own data members here
-	//-----------------------------------------
-	bool                  m_is_device_initialized;
-   stringstream          m_status_message;
-
-   //lima OBJECTS
-   lima::Eiger::Interface* m_hw;
-   CtControl*              m_ct;
-   lima::Eiger::Camera*    m_camera;		
+    //lima OBJECTS
+    lima::Eiger::Interface* m_hw;
+    CtControl* m_ct;
+    lima::Eiger::Camera* m_camera;
+    std::string m_file_name_pattern;
 };
 
-}	// namespace_ns
+} // namespace_ns
 
-#endif	// _Eiger_H
+#endif // _Eiger_H

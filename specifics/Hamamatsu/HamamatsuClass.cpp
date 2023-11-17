@@ -59,6 +59,79 @@ __declspec(dllexport)
 
 namespace Hamamatsu_ns
 {
+//+----------------------------------------------------------------------------
+//
+// method : 		SetParameterCmd::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *SetParameterCmd::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "SetParameterCmd::execute(): arrived" << endl;
+
+	const Tango::DevVarStringArray	*argin;
+	extract(in_any, argin);
+
+	((static_cast<Hamamatsu *>(device))->set_parameter(argin));
+	return new CORBA::Any();
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		GetParameterCmd::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *GetParameterCmd::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "GetParameterCmd::execute(): arrived" << endl;
+
+	Tango::DevString	argin;
+	extract(in_any, argin);
+
+	return insert((static_cast<Hamamatsu *>(device))->get_parameter(argin));
+}
+
+
+
+//+----------------------------------------------------------------------------
+//
+// method : 		GetAllParametersCmd::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *GetAllParametersCmd::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "GetAllParametersCmd::execute(): arrived" << endl;
+
+	return insert((static_cast<Hamamatsu *>(device))->get_all_parameters());
+}
+
+
 
 
 //
@@ -147,6 +220,21 @@ HamamatsuClass *HamamatsuClass::instance()
 //-----------------------------------------------------------------------------
 void HamamatsuClass::command_factory()
 {
+	command_list.push_back(new GetAllParametersCmd("GetAllParameters",
+		Tango::DEV_VOID, Tango::DEV_STRING,
+		"",
+		"",
+		Tango::EXPERT));
+	command_list.push_back(new GetParameterCmd("GetParameter",
+		Tango::DEV_STRING, Tango::DEV_STRING,
+		"Name of the parameter",
+		"",
+		Tango::EXPERT));
+	command_list.push_back(new SetParameterCmd("SetParameter",
+		Tango::DEVVAR_STRINGARRAY, Tango::DEV_VOID,
+		"First argument is the parameter's name, Second is the value",
+		"",
+		Tango::EXPERT));
 
 	//	add polling if any
 	for (unsigned int i=0 ; i<command_list.size(); i++)
@@ -242,14 +330,6 @@ void HamamatsuClass::device_factory(const Tango::DevVarStringArray *devlist_ptr)
 //-----------------------------------------------------------------------------
 void HamamatsuClass::attribute_factory(vector<Tango::Attr *> &att_list)
 {
-	//	Attribute : readoutSpeed
-	readoutSpeedAttrib	*readout_speed = new readoutSpeedAttrib();
-	Tango::UserDefaultAttrProp	readout_speed_prop;
-	readout_speed_prop.set_label("Readout speed");
-	readout_speed_prop.set_description("Possible values are:<br>\nNORMAL<br>\nSLOW<br>");
-	readout_speed->set_default_properties(readout_speed_prop);
-	att_list.push_back(readout_speed);
-
 	//	Attribute : lostFrames
 	lostFramesAttrib	*lost_frames = new lostFramesAttrib();
 	Tango::UserDefaultAttrProp	lost_frames_prop;
@@ -269,6 +349,89 @@ void HamamatsuClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	fps_prop.set_description("The last computed frame per second (the value is computed every 100 frames only)");
 	fps->set_default_properties(fps_prop);
 	att_list.push_back(fps);
+
+	//	Attribute : wViewEnabled
+	wViewEnabledAttrib	*w_view_enabled = new wViewEnabledAttrib();
+	Tango::UserDefaultAttrProp	w_view_enabled_prop;
+	w_view_enabled_prop.set_description("Enable the W-VIEW");
+	w_view_enabled->set_default_properties(w_view_enabled_prop);
+	att_list.push_back(w_view_enabled);
+
+	//	Attribute : topViewExposureTime
+	topViewExposureTimeAttrib	*top_view_exposure_time = new topViewExposureTimeAttrib();
+	Tango::UserDefaultAttrProp	top_view_exposure_time_prop;
+	top_view_exposure_time_prop.set_label("Top view exposure time");
+	top_view_exposure_time_prop.set_unit("ms");
+	top_view_exposure_time_prop.set_standard_unit("ms");
+	top_view_exposure_time_prop.set_display_unit("ms");
+	top_view_exposure_time_prop.set_format("%7.2f");
+	top_view_exposure_time_prop.set_description("Exposure time for W-VIEW #1");
+	top_view_exposure_time->set_default_properties(top_view_exposure_time_prop);
+	top_view_exposure_time->set_memorized();
+	top_view_exposure_time->set_memorized_init(false);
+	att_list.push_back(top_view_exposure_time);
+
+	//	Attribute : bottomViewExposureTime
+	bottomViewExposureTimeAttrib	*bottom_view_exposure_time = new bottomViewExposureTimeAttrib();
+	Tango::UserDefaultAttrProp	bottom_view_exposure_time_prop;
+	bottom_view_exposure_time_prop.set_label("Bottom view exposure time");
+	bottom_view_exposure_time_prop.set_unit("ms");
+	bottom_view_exposure_time_prop.set_standard_unit("ms");
+	bottom_view_exposure_time_prop.set_display_unit("ms");
+	bottom_view_exposure_time_prop.set_format("%7.2f");
+	bottom_view_exposure_time_prop.set_description("Exposure time for W-VIEW #2");
+	bottom_view_exposure_time->set_default_properties(bottom_view_exposure_time_prop);
+	bottom_view_exposure_time->set_memorized();
+	bottom_view_exposure_time->set_memorized_init(false);
+	att_list.push_back(bottom_view_exposure_time);
+
+	//	Attribute : channel1Polarity
+	channel1PolarityAttrib	*channel1_polarity = new channel1PolarityAttrib();
+	Tango::UserDefaultAttrProp	channel1_polarity_prop;
+	channel1_polarity_prop.set_description("Polarity value : \n1 = Negative\n2 = Positive");
+	channel1_polarity->set_default_properties(channel1_polarity_prop);
+	channel1_polarity->set_disp_level(Tango::EXPERT);
+	att_list.push_back(channel1_polarity);
+
+	//	Attribute : channel2Polarity
+	channel2PolarityAttrib	*channel2_polarity = new channel2PolarityAttrib();
+	Tango::UserDefaultAttrProp	channel2_polarity_prop;
+	channel2_polarity_prop.set_description("Polarity value : \n1 = Negative\n2 = Positive");
+	channel2_polarity->set_default_properties(channel2_polarity_prop);
+	channel2_polarity->set_disp_level(Tango::EXPERT);
+	att_list.push_back(channel2_polarity);
+
+	//	Attribute : channel3Polarity
+	channel3PolarityAttrib	*channel3_polarity = new channel3PolarityAttrib();
+	Tango::UserDefaultAttrProp	channel3_polarity_prop;
+	channel3_polarity_prop.set_description("Polarity value : \n1 = Negative\n2 = Positive");
+	channel3_polarity->set_default_properties(channel3_polarity_prop);
+	channel3_polarity->set_disp_level(Tango::EXPERT);
+	att_list.push_back(channel3_polarity);
+
+	//	Attribute : channel1Kind
+	channel1KindAttrib	*channel1_kind = new channel1KindAttrib();
+	Tango::UserDefaultAttrProp	channel1_kind_prop;
+	channel1_kind_prop.set_description("This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max\n\nKind value : \n1 = Output_Trigger_Kind_Low\n2 = Output_Trigger_Kind_Global_Exposure\n3 = Output_Trigger_Kind_Programmable\n4 = Output_Trigger_Kind_TriggerReady\n5 = Output_Trigger_Kind_High (may need SDK update)");
+	channel1_kind->set_default_properties(channel1_kind_prop);
+	channel1_kind->set_disp_level(Tango::EXPERT);
+	att_list.push_back(channel1_kind);
+
+	//	Attribute : channel2Kind
+	channel2KindAttrib	*channel2_kind = new channel2KindAttrib();
+	Tango::UserDefaultAttrProp	channel2_kind_prop;
+	channel2_kind_prop.set_description("This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max\n\nKind value : \n1 = Output_Trigger_Kind_Low\n2 = Output_Trigger_Kind_Global_Exposure\n3 = Output_Trigger_Kind_Programmable\n4 = Output_Trigger_Kind_TriggerReady\n5 = Output_Trigger_Kind_High (may need SDK update)");
+	channel2_kind->set_default_properties(channel2_kind_prop);
+	channel2_kind->set_disp_level(Tango::EXPERT);
+	att_list.push_back(channel2_kind);
+
+	//	Attribute : channel3Kind
+	channel3KindAttrib	*channel3_kind = new channel3KindAttrib();
+	Tango::UserDefaultAttrProp	channel3_kind_prop;
+	channel3_kind_prop.set_description("This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max\n\nKind value : \n1 = Output_Trigger_Kind_Low\n2 = Output_Trigger_Kind_Global_Exposure\n3 = Output_Trigger_Kind_Programmable\n4 = Output_Trigger_Kind_TriggerReady\n5 = Output_Trigger_Kind_High (may need SDK update)");
+	channel3_kind->set_default_properties(channel3_kind_prop);
+	channel3_kind->set_disp_level(Tango::EXPERT);
+	att_list.push_back(channel3_kind);
 
 	//	End of Automatic code generation
 	//-------------------------------------------------------------
@@ -342,6 +505,96 @@ void HamamatsuClass::set_default_property()
 	prop_def  = "NORMAL";
 	vect_data.clear();
 	vect_data.push_back("NORMAL");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "BlankOfSyncreadoutTrigger";
+	prop_desc = "Allows you to select the blank of synreadout:<BR>\nAvailables values :<br>\n- STANDARD<BR>\n- MINIMUM<BR>\n";
+	prop_def  = "STANDARD";
+	vect_data.clear();
+	vect_data.push_back("STANDARD");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedTopViewExposureTime";
+	prop_desc = "Memorize/Define the Top View exposure time attribute at Init device<br>";
+	prop_def  = "1000";
+	vect_data.clear();
+	vect_data.push_back("1000");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedBottomViewExposureTime";
+	prop_desc = "Memorize/Define the Bottom View exposure time attribute at Init device<br>";
+	prop_def  = "1000";
+	vect_data.clear();
+	vect_data.push_back("1000");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedWViewEnabled";
+	prop_desc = "Memorize/Define the W-VIEW mode attribute at Init device<br>";
+	prop_def  = "false";
+	vect_data.clear();
+	vect_data.push_back("false");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedHighDynamicRangeEnabled";
+	prop_desc = "Memorize/Define the HighDynamicRangeEnabled attribute at Init device<br>";
+	prop_def  = "false";
+	vect_data.clear();
+	vect_data.push_back("false");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "ExpertFrameBufferSize";
+	prop_desc = "Only an expert User could change this property.<br>\nThis is the DCAM frame buffer size used during the acquisition.<BR>";
+	prop_def  = "10";
+	vect_data.clear();
+	vect_data.push_back("10");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);

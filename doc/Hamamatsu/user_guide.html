@@ -44,12 +44,12 @@
 <Tr><Td><Br>&nbsp;<Br>
 <center>
 <h1>
-Device specific for Princeton CCD detector <Br>
+ <Br>
 User's Guide<Br>&nbsp;<Br> <Br><Br>
-AviexCCD Class<Br>&nbsp;<Br></Td></Tr>
+Hamamatsu Class<Br>&nbsp;<Br></Td></Tr>
 </h1>
 <Tr><Td>
-<b><Center>Revision:  - Author:  <Br>
+<b><Center>Revision:  - Author: cedric.castel <Br>
  Implemented in C++
 </Center></b>
 </Td></Tr>
@@ -69,36 +69,23 @@ AviexCCD Class<Br>&nbsp;<Br></Td></Tr>
 <Br>
 <Br><h2>Class Identification:</h2>
 <ul>
-	<li><b>Contact      :</b>	 at synchrotron-soleil.fr - arafat.noureddine
-	<li><b>Class Family :</b>	Acquisition
+	<li><b>Contact      :</b>	 at synchrotron-soleil.fr - cedric.castel
+	<li><b>Class Family :</b>	Hamamatsu
 	<li><b>Platform     :</b>	All Platforms
 	<li><b>Bus          :</b>	Not Applicable
 	<li><b>Manufacturer :</b>	SOLEIL
 </ul><Br>&nbsp;<Br><Br>
 <h2>Class Inheritance:</h2>
 	<ul>
-		<li> <a href="http://www.esrf.fr/computing/cs/tango/tango_doc/kernel_doc/cpp_doc/"> Tango::Device_4Impl</a></li>
+		<li> <a href="http://www.esrf.fr/computing/cs/tango/tango_doc/kernel_doc/cpp_doc/"> TANGO_BASE_CLASS</a></li>
 		<ul>
-			<li> AviexCCD</li>
+			<li> Hamamatsu</li>
 			</ul>
 		</ul>
 	</ul>
 </ul>
 <Br>&nbsp;<Br>
-<h2>Description:</h2>
 
-</b>
-</center>
-
-
-<Center>
-Generic device intented to manage Detector via Lima Framework
-<Br>
-<Br>
-</Center>
-
-
-</center>
 <Br>&nbsp;<Br><Br>&nbsp;<Br><h2>Properties:</h2>
 
 
@@ -111,48 +98,45 @@ Generic device intented to manage Detector via Lima Framework
 <Td><Center><b>Property name</b></td></Center>
 <Td><Center><b>Property type</b></td></Center>
 <Td><Center><b>Description</b></td></Center>
-<Tr><Td><b><a href=#Dev_DefaultValues>DetectorID </a></b></Td>
-<Td><Font Size=-1>Tango::DEV_STRING</Font></Td>
-<Td><Font Size=-1>Detector Name.</Font></Td></Tr>
+<Tr><Td><b><a href=#Dev_DefaultValues>DetectorNum </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_LONG</Font></Td>
+<Td><Font Size=-1>id of the camera</Font></Td></Tr>
 
-<Tr><Td><b><a href=#Dev_DefaultValues>MxDatabaseFileFullName </a></b></Td>
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedReadoutSpeed </a></b></Td>
 <Td><Font Size=-1>Tango::DEV_STRING</Font></Td>
-<Td><Font Size=-1>The path & the Name of the Mx database file .<br>
+<Td><Font Size=-1>Memorize/Define the readoutSpeed attribute at Init device<br>
+Availables values :<br>
+NORMAL<br>
+SLOW<br></Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>BlankOfSyncreadoutTrigger </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_STRING</Font></Td>
+<Td><Font Size=-1>Allows you to select the blank of synreadout:<BR>
+Availables values :<br>
+- STANDARD<BR>
+- MINIMUM<BR>
 </Font></Td></Tr>
 
-<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedInternalAcquisitionMode </a></b></Td>
-<Td><Font Size=-1>Tango::DEV_STRING</Font></Td>
-<Td><Font Size=-1>Memorize/Define the internalAcquisitionMode attribute at Init device<br>
-Availables values :<br>
-- ONESHOT<br>
-- CONTINUOUS<br>
-- MULTIFRAME<br>
-- GEOMETRICAL<br>
-- MEASURE_DARK_FRAME<br></Font></Td></Tr>
-
-<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedCorrectionFlags </a></b></Td>
-<Td><Font Size=-1>Tango::DEV_ULONG</Font></Td>
-<Td><Font Size=-1></Font></Td></Tr>
-
-<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedInitialDelayTime </a></b></Td>
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedTopViewExposureTime </a></b></Td>
 <Td><Font Size=-1>Tango::DEV_DOUBLE</Font></Td>
-<Td><Font Size=-1></Font></Td></Tr>
+<Td><Font Size=-1>Memorize/Define the Top View exposure time attribute at Init device<br></Font></Td></Tr>
 
-<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedReadoutDelayTime </a></b></Td>
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedBottomViewExposureTime </a></b></Td>
 <Td><Font Size=-1>Tango::DEV_DOUBLE</Font></Td>
-<Td><Font Size=-1></Font></Td></Tr>
+<Td><Font Size=-1>Memorize/Define the Bottom View exposure time attribute at Init device<br></Font></Td></Tr>
 
-<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedExposureMultiplier </a></b></Td>
-<Td><Font Size=-1>Tango::DEV_DOUBLE</Font></Td>
-<Td><Font Size=-1></Font></Td></Tr>
-
-<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedGapMultiplier </a></b></Td>
-<Td><Font Size=-1>Tango::DEV_DOUBLE</Font></Td>
-<Td><Font Size=-1></Font></Td></Tr>
-
-<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedHighSpeed </a></b></Td>
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedWViewEnabled </a></b></Td>
 <Td><Font Size=-1>Tango::DEV_BOOLEAN</Font></Td>
-<Td><Font Size=-1></Font></Td></Tr>
+<Td><Font Size=-1>Memorize/Define the W-VIEW mode attribute at Init device<br></Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedHighDynamicRangeEnabled </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_BOOLEAN</Font></Td>
+<Td><Font Size=-1>Memorize/Define the HighDynamicRangeEnabled attribute at Init device<br></Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>ExpertFrameBufferSize </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_LONG</Font></Td>
+<Td><Font Size=-1>Only an expert User could change this property.<br>
+This is the DCAM frame buffer size used during the acquisition.<BR></Font></Td></Tr>
 
 </Table>
 
@@ -168,40 +152,36 @@ Availables values :<br>
         <td><b>Default Values</b></td>
     </Tr>
     <Tr>
-        <Td>DetectorID</Td>
-        <td>MUST_BE_DEFINED</td>
-    </Tr>
-    <Tr>
-        <Td>MxDatabaseFileFullName</Td>
-        <td>MUST_BE_DEFINED</td>
-    </Tr>
-    <Tr>
-        <Td>MemorizedInternalAcquisitionMode</Td>
-        <td>MULTIFRAME</td>
-    </Tr>
-    <Tr>
-        <Td>MemorizedCorrectionFlags</Td>
+        <Td>DetectorNum</Td>
         <td>0</td>
     </Tr>
     <Tr>
-        <Td>MemorizedInitialDelayTime</Td>
-        <td>0</td>
+        <Td>MemorizedReadoutSpeed</Td>
+        <td>NORMAL</td>
     </Tr>
     <Tr>
-        <Td>MemorizedReadoutDelayTime</Td>
-        <td>0</td>
+        <Td>BlankOfSyncreadoutTrigger</Td>
+        <td>STANDARD</td>
     </Tr>
     <Tr>
-        <Td>MemorizedExposureMultiplier</Td>
-        <td>1.0</td>
+        <Td>MemorizedTopViewExposureTime</Td>
+        <td>1000</td>
     </Tr>
     <Tr>
-        <Td>MemorizedGapMultiplier</Td>
-        <td>1.0</td>
+        <Td>MemorizedBottomViewExposureTime</Td>
+        <td>1000</td>
     </Tr>
     <Tr>
-        <Td>MemorizedHighSpeed</Td>
+        <Td>MemorizedWViewEnabled</Td>
         <td>false</td>
+    </Tr>
+    <Tr>
+        <Td>MemorizedHighDynamicRangeEnabled</Td>
+        <td>false</td>
+    </Tr>
+    <Tr>
+        <Td>ExpertFrameBufferSize</Td>
+        <td>10</td>
     </Tr>
 </Table>
 
@@ -256,41 +236,38 @@ There is no Class properties.<Br><Br>
 <Td><Center><b>Data Type</b></td></Center>
 <Td><Center><b>R/W Type</b></td></Center>
 <Td><Center><b>Expert</b></td></Center>
-<Tr><Td><b>mxLibraryVersion</b>: <Font Size=-1>This returns a complete version string for MX library.</Font></Td>
-<Td><Center><Font Size=-1>DEV_STRING</Font></Center></Td><Td><Center><Font Size=-1>READ</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+<Tr><Td><b>lostFrames</b>: <Font Size=-1>Number of frames lost during the current or last acquisition.</Font></Td>
+<Td><Center><Font Size=-1>DEV_LONG</Font></Center></Td><Td><Center><Font Size=-1>READ</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
 
-<Tr><Td><b>internalAcquisitionMode</b>: <Font Size=-1>Available Internal Acquisition Modes are :<br> ONESHOT<br> CONTINUOUS<br> MULTIFRAME<br> GEOMETRICAL<br> MEASURE_DARK<br> MEASURE_FLOOD_FIELD<br></Font></Td>
-<Td><Center><Font Size=-1>DEV_STRING</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+<Tr><Td><b>fps</b>: <Font Size=-1>The last computed frame per second (the value is computed every 100 frames only)</Font></Td>
+<Td><Center><Font Size=-1>DEV_DOUBLE</Font></Center></Td><Td><Center><Font Size=-1>READ</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
 
-<Tr><Td><b>initialDelayTime</b></Td>
+<Tr><Td><b>wViewEnabled</b>: <Font Size=-1>Enable the W-VIEW</Font></Td>
+<Td><Center><Font Size=-1>DEV_BOOLEAN</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+
+<Tr><Td><b>topViewExposureTime</b>: <Font Size=-1>Exposure time for W-VIEW #1</Font></Td>
 <Td><Center><Font Size=-1>DEV_DOUBLE</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
 
-<Tr><Td><b>readoutDelayTime</b></Td>
+<Tr><Td><b>bottomViewExposureTime</b>: <Font Size=-1>Exposure time for W-VIEW #2</Font></Td>
 <Td><Center><Font Size=-1>DEV_DOUBLE</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
 
-<Tr><Td><b>exposureMultiplier</b></Td>
-<Td><Center><Font Size=-1>DEV_DOUBLE</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+<Tr><Td><b>channel1Polarity</b>: <Font Size=-1>Polarity value :  1 = Negative 2 = Positive</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
 
-<Tr><Td><b>gapMultiplier</b></Td>
-<Td><Center><Font Size=-1>DEV_DOUBLE</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+<Tr><Td><b>channel2Polarity</b>: <Font Size=-1>Polarity value :  1 = Negative 2 = Positive</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
 
-<Tr><Td><b>maskCorrection</b></Td>
-<Td><Center><Font Size=-1>DEV_BOOLEAN</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+<Tr><Td><b>channel3Polarity</b>: <Font Size=-1>Polarity value :  1 = Negative 2 = Positive</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
 
-<Tr><Td><b>biasCorrection</b></Td>
-<Td><Center><Font Size=-1>DEV_BOOLEAN</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+<Tr><Td><b>channel1Kind</b>: <Font Size=-1>This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max  Kind value :  1 = Output_Trigger_Kind_Low 2 = Output_Trigger_Kind_Global_Exposure 3 = Output_Trigger_Kind_Programmable 4 = Output_Trigger_Kind_TriggerReady 5 = Output_Trigger_Kind_High (may need SDK update)</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
 
-<Tr><Td><b>darkCorrection</b></Td>
-<Td><Center><Font Size=-1>DEV_BOOLEAN</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+<Tr><Td><b>channel2Kind</b>: <Font Size=-1>This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max  Kind value :  1 = Output_Trigger_Kind_Low 2 = Output_Trigger_Kind_Global_Exposure 3 = Output_Trigger_Kind_Programmable 4 = Output_Trigger_Kind_TriggerReady 5 = Output_Trigger_Kind_High (may need SDK update)</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
 
-<Tr><Td><b>floodCorrection</b></Td>
-<Td><Center><Font Size=-1>DEV_BOOLEAN</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
-
-<Tr><Td><b>geomCorrection</b></Td>
-<Td><Center><Font Size=-1>DEV_BOOLEAN</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
-
-<Tr><Td><b>highSpeed</b></Td>
-<Td><Center><Font Size=-1>DEV_BOOLEAN</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+<Tr><Td><b>channel3Kind</b>: <Font Size=-1>This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max  Kind value :  1 = Output_Trigger_Kind_Low 2 = Output_Trigger_Kind_Global_Exposure 3 = Output_Trigger_Kind_Programmable 4 = Output_Trigger_Kind_TriggerReady 5 = Output_Trigger_Kind_High (may need SDK update)</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
 
 </Table>
 </Center>

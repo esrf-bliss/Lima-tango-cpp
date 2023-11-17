@@ -48,7 +48,7 @@ Device Attributes Description 		<Br> <Br>
 Hamamatsu Class	<Br>
 </h1>
 <b>
-Revision:  - Author: 
+Revision:  - Author: cedric.castel
 </b>
 </center>
 
@@ -62,14 +62,38 @@ Revision:  - Author:
 <Td><Center><b>Data Type</b></td></Center>
 <Td><Center><b>R/W Type</b></td></Center>
 <Td><Center><b>Expert</b></td></Center>
-<Tr><Td><b>readoutSpeed</b>: <Font Size=-1>Possible values are:<br> SLOW<br> NORMAL<br></Font></Td>
-<Td><Center><Font Size=-1>DEV_STRING</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
-
 <Tr><Td><b>lostFrames</b>: <Font Size=-1>Number of frames lost during the current or last acquisition.</Font></Td>
 <Td><Center><Font Size=-1>DEV_LONG</Font></Center></Td><Td><Center><Font Size=-1>READ</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
 
 <Tr><Td><b>fps</b>: <Font Size=-1>The last computed frame per second (the value is computed every 100 frames only)</Font></Td>
 <Td><Center><Font Size=-1>DEV_DOUBLE</Font></Center></Td><Td><Center><Font Size=-1>READ</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+
+<Tr><Td><b>wViewEnabled</b>: <Font Size=-1>Enable the W-VIEW</Font></Td>
+<Td><Center><Font Size=-1>DEV_BOOLEAN</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+
+<Tr><Td><b>topViewExposureTime</b>: <Font Size=-1>Exposure time for W-VIEW #1</Font></Td>
+<Td><Center><Font Size=-1>DEV_DOUBLE</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+
+<Tr><Td><b>bottomViewExposureTime</b>: <Font Size=-1>Exposure time for W-VIEW #2</Font></Td>
+<Td><Center><Font Size=-1>DEV_DOUBLE</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>No</Font></Center></Td></Tr>
+
+<Tr><Td><b>channel1Polarity</b>: <Font Size=-1>Polarity value :  1 = Negative 2 = Positive</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
+
+<Tr><Td><b>channel2Polarity</b>: <Font Size=-1>Polarity value :  1 = Negative 2 = Positive</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
+
+<Tr><Td><b>channel3Polarity</b>: <Font Size=-1>Polarity value :  1 = Negative 2 = Positive</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
+
+<Tr><Td><b>channel1Kind</b>: <Font Size=-1>This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max  Kind value :  1 = Output_Trigger_Kind_Low 2 = Output_Trigger_Kind_Global_Exposure 3 = Output_Trigger_Kind_Programmable 4 = Output_Trigger_Kind_TriggerReady 5 = Output_Trigger_Kind_High (may need SDK update)</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
+
+<Tr><Td><b>channel2Kind</b>: <Font Size=-1>This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max  Kind value :  1 = Output_Trigger_Kind_Low 2 = Output_Trigger_Kind_Global_Exposure 3 = Output_Trigger_Kind_Programmable 4 = Output_Trigger_Kind_TriggerReady 5 = Output_Trigger_Kind_High (may need SDK update)</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
+
+<Tr><Td><b>channel3Kind</b>: <Font Size=-1>This element can contain 3 elements because at 01/06/2021 on many hamamatsu camera there are 3 elements max  Kind value :  1 = Output_Trigger_Kind_Low 2 = Output_Trigger_Kind_Global_Exposure 3 = Output_Trigger_Kind_Programmable 4 = Output_Trigger_Kind_TriggerReady 5 = Output_Trigger_Kind_High (may need SDK update)</Font></Td>
+<Td><Center><Font Size=-1>DEV_USHORT</Font></Center></Td><Td><Center><Font Size=-1>READ_WRITE</Font></Center></Td><Td><Center><Font Size=-1>Yes</Font></Center></Td></Tr>
 
 </Table>
 </Center>

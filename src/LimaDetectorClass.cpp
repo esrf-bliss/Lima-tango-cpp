@@ -67,6 +67,70 @@ namespace LimaDetector_ns
 {
 //+----------------------------------------------------------------------------
 //
+// method : 		InitInterfaceCmd::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *InitInterfaceCmd::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "InitInterfaceCmd::execute(): arrived" << endl;
+
+	((static_cast<LimaDetector *>(device))->init_interface());
+	return new CORBA::Any();
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		GetAvailableCapabilitiesCmd::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *GetAvailableCapabilitiesCmd::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "GetAvailableCapabilitiesCmd::execute(): arrived" << endl;
+
+	return insert((static_cast<LimaDetector *>(device))->get_available_capabilities());
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		GetDataStreamsCmd::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *GetDataStreamsCmd::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "GetDataStreamsCmd::execute(): arrived" << endl;
+
+	return insert((static_cast<LimaDetector *>(device))->get_data_streams());
+}
+
+//+----------------------------------------------------------------------------
+//
 // method : 		ReloadROICmd::execute()
 // 
 // description : 	method to trigger the execution of the command.
@@ -456,6 +520,11 @@ void LimaDetectorClass::command_factory()
 		"Attribute name",
 		"List of strings containing the available values",
 		Tango::EXPERT));
+	command_list.push_back(new GetAvailableCapabilitiesCmd("GetAvailableCapabilities",
+		Tango::DEV_VOID, Tango::DEVVAR_STRINGARRAY,
+		"",
+		"The list of available capabilities",
+		Tango::OPERATOR));
 	command_list.push_back(new ResetFileIndexClass("ResetFileIndex",
 		Tango::DEV_VOID, Tango::DEV_VOID,
 		"",
@@ -466,6 +535,16 @@ void LimaDetectorClass::command_factory()
 		"",
 		"",
 		Tango::OPERATOR));
+	command_list.push_back(new GetDataStreamsCmd("GetDataStreams",
+		Tango::DEV_VOID, Tango::DEVVAR_STRINGARRAY,
+		"",
+		"",
+		Tango::OPERATOR));
+	command_list.push_back(new InitInterfaceCmd("InitInterface",
+		Tango::DEV_VOID, Tango::DEV_VOID,
+		"",
+		"",
+		Tango::EXPERT));
 
 	//	add polling if any
 	for (unsigned int i=0 ; i<command_list.size(); i++)
@@ -587,6 +666,7 @@ void LimaDetectorClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	Tango::UserDefaultAttrProp	detector_width_max_prop;
 	detector_width_max_prop.set_unit(" ");
 	detector_width_max_prop.set_format("%6d");
+	detector_width_max_prop.set_description("Maximum width");
 	detector_width_max->set_default_properties(detector_width_max_prop);
 	att_list.push_back(detector_width_max);
 
@@ -595,6 +675,7 @@ void LimaDetectorClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	Tango::UserDefaultAttrProp	detector_height_max_prop;
 	detector_height_max_prop.set_unit(" ");
 	detector_height_max_prop.set_format("%6d");
+	detector_height_max_prop.set_description("Maximum height");
 	detector_height_max->set_default_properties(detector_height_max_prop);
 	att_list.push_back(detector_height_max);
 
@@ -677,6 +758,19 @@ void LimaDetectorClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	latency_time->set_memorized_init(false);
 	att_list.push_back(latency_time);
 
+	//	Attribute : frameRate
+	frameRateAttrib	*frame_rate = new frameRateAttrib();
+	Tango::UserDefaultAttrProp	frame_rate_prop;
+	frame_rate_prop.set_unit("frame/s");
+	frame_rate_prop.set_standard_unit("frame/s");
+	frame_rate_prop.set_display_unit("frame/s");
+	frame_rate_prop.set_format("%7.2f");
+	frame_rate->set_default_properties(frame_rate_prop);
+	frame_rate->set_disp_level(Tango::EXPERT);
+	frame_rate->set_memorized();
+	frame_rate->set_memorized_init(false);
+	att_list.push_back(frame_rate);
+
 	//	Attribute : roiX
 	roiXAttrib	*roi_x = new roiXAttrib();
 	Tango::UserDefaultAttrProp	roi_x_prop;
@@ -738,7 +832,7 @@ void LimaDetectorClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	nb_frames_prop.set_standard_unit(" ");
 	nb_frames_prop.set_display_unit(" ");
 	nb_frames_prop.set_format("%6d");
-	nb_frames_prop.set_description("Define the number of frames to acquire.<br>\nAvailable only in acqusisition mode, i.e SNAP.<br>\nIn vide mode, i.e START it is always forced to 0, this is mean that we request an infinite number of frames.");
+	nb_frames_prop.set_description("Define the number of frames to acquire.<br>\nAvailable only in acqusisition mode, i.e SNAP.<br>\nIn live mode, i.e START it is forced to 0, this means that we request an infinite number of frames.");
 	nb_frames->set_default_properties(nb_frames_prop);
 	nb_frames->set_memorized();
 	nb_frames->set_memorized_init(false);
@@ -758,12 +852,44 @@ void LimaDetectorClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	//	Attribute : fileGeneration
 	fileGenerationAttrib	*file_generation = new fileGenerationAttrib();
 	Tango::UserDefaultAttrProp	file_generation_prop;
+	file_generation_prop.set_unit(" ");
 	file_generation_prop.set_description("Allow to save grabbed frames into a file on disk.<br>\nAvailable formats for the file are:  EDF, RAW, NXS<br>\nThe format is fixed in FileFormat property.<br>");
 	file_generation->set_default_properties(file_generation_prop);
 	file_generation->set_disp_level(Tango::EXPERT);
 	file_generation->set_memorized();
 	file_generation->set_memorized_init(false);
 	att_list.push_back(file_generation);
+
+	//	Attribute : fileFormat
+	fileFormatAttrib	*file_format = new fileFormatAttrib();
+	Tango::UserDefaultAttrProp	file_format_prop;
+	file_format_prop.set_unit(" ");
+	file_format_prop.set_description("File format that will be used for saving.\nAvailable format are:\n- NXS\n- EDF\n- RAW\n- HDF5");
+	file_format->set_default_properties(file_format_prop);
+	file_format->set_disp_level(Tango::EXPERT);
+	file_format->set_memorized();
+	file_format->set_memorized_init(false);
+	att_list.push_back(file_format);
+
+	//	Attribute : filePrefix
+	filePrefixAttrib	*file_prefix = new filePrefixAttrib();
+	Tango::UserDefaultAttrProp	file_prefix_prop;
+	file_prefix_prop.set_unit(" ");
+	file_prefix->set_default_properties(file_prefix_prop);
+	file_prefix->set_disp_level(Tango::EXPERT);
+	file_prefix->set_memorized();
+	file_prefix->set_memorized_init(false);
+	att_list.push_back(file_prefix);
+
+	//	Attribute : fileTargetPath
+	fileTargetPathAttrib	*file_target_path = new fileTargetPathAttrib();
+	Tango::UserDefaultAttrProp	file_target_path_prop;
+	file_target_path_prop.set_unit(" ");
+	file_target_path->set_default_properties(file_target_path_prop);
+	file_target_path->set_disp_level(Tango::EXPERT);
+	file_target_path->set_memorized();
+	file_target_path->set_memorized_init(false);
+	att_list.push_back(file_target_path);
 
 	//	Attribute : fileNbFrames
 	fileNbFramesAttrib	*file_nb_frames = new fileNbFramesAttrib();
@@ -774,6 +900,25 @@ void LimaDetectorClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	file_nb_frames->set_memorized();
 	file_nb_frames->set_memorized_init(false);
 	att_list.push_back(file_nb_frames);
+
+	//	Attribute : fileExtension
+	fileExtensionAttrib	*file_extension = new fileExtensionAttrib();
+	Tango::UserDefaultAttrProp	file_extension_prop;
+	file_extension_prop.set_unit(" ");
+	file_extension_prop.set_description("Display the actual extension that will be used for saving files, according to the chosen file format");
+	file_extension->set_default_properties(file_extension_prop);
+	file_extension->set_disp_level(Tango::EXPERT);
+	att_list.push_back(file_extension);
+
+	//	Attribute : operationsList
+	operationsListAttrib	*operations_list = new operationsListAttrib();
+	Tango::UserDefaultAttrProp	operations_list_prop;
+	operations_list_prop.set_unit(" ");
+	operations_list_prop.set_standard_unit(" ");
+	operations_list_prop.set_display_unit(" ");
+	operations_list_prop.set_description("Enumerate all active 'post processing' operations on the image.");
+	operations_list->set_default_properties(operations_list_prop);
+	att_list.push_back(operations_list);
 
 	//	End of Automatic code generation
 	//-------------------------------------------------------------
@@ -826,6 +971,36 @@ void LimaDetectorClass::set_default_property()
 	vector<string>	vect_data;
 	//	Set Default Class Properties
 	//	Set Default Device Properties
+	prop_name = "AutoStartVideo";
+	prop_desc = "Allows calling automatically the \"Start\" command when:<br>\n- The device starts.<br>\n- After calling the \"Init\" command.";
+	prop_def  = "false";
+	vect_data.clear();
+	vect_data.push_back("false");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "AutoSaveResetRoi";
+	prop_desc = "Memorize the \"full frame\" automatically at the call of \"ResetRoi\" :<br>\n[default = false]";
+	prop_def  = "false";
+	vect_data.clear();
+	vect_data.push_back("false");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
 	prop_name = "DetectorDescription";
 	prop_desc = "Detector user-defined text to identify the engine.";
 	prop_def  = "This is my Simulator";
@@ -842,7 +1017,7 @@ void LimaDetectorClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "DetectorType";
-	prop_desc = "Define the type of the connected Detector .<BR>\nAvailables types :<BR>\n- AdscCCD<BR>\n- AviexCCD<br>\n- BaslerCCD<BR>\n- Eiger<br>\n- Hamamatsu<br>\n- MarCCD<BR>\n- Pco<BR>\n- PerkinElmer<BR>\n- PilatusPixelDetector<BR>\n- ProsilicaCCD<BR>\n- PrincetonCCD<BR>\n- SimulatorCCD<BR>\n- XpadPixelDetector<BR>\n\n";
+	prop_desc = "Define the type of the connected Detector .<BR>\nAvailables types :<BR>\n- AndorCCD<BR>\n- BaslerCCD<BR>\n- Dhyana<br>\n- Eiger<br>\n- Hamamatsu<br>\n- ImXpad<br>\n- Lambda<br>\n- MarCCD<BR>\n- Maxipix<BR>\n- Merlin<BR>\n- Pco<BR>\n- PerkinElmer<BR>\n- PilatusPixelDetector<BR>\n- PrincetonCCD<BR>\n- SimulatorCCD<BR>\n- SlsEiger<BR>\n- SlsJungfrau<BR>\n- SpectralInstrument<BR>\n- SpectrumOneCCD<BR>\n- Ufxc<BR>\n- UviewCCD<BR>\n- XpadPixelDetector<BR>";
 	prop_def  = "SimulatorCCD";
 	vect_data.clear();
 	vect_data.push_back("SimulatorCCD");
@@ -857,7 +1032,7 @@ void LimaDetectorClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "DetectorPixelDepth";
-	prop_desc = "Define the pixel depth of the detector : <br>\nAvailables values : <br>\n- 8 <br>\n- 16<br>\n- 32<br>\n- 32S<br>";
+	prop_desc = "Define the pixel depth of the detector : <br>\nAvailables values : <br>\n- 8 <br>\n- 12<br>\n- 16<br>\n- 16S<br>\n- 24<br>\n- 24S<br>\n- 32<br>\n- 32S<br>";
 	prop_def  = "16";
 	vect_data.clear();
 	vect_data.push_back("16");
@@ -902,10 +1077,25 @@ void LimaDetectorClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "ImageSource";
-	prop_desc = "Choose the source of Data given to the image attribute :<br>\n- VIDEO : use ctVideo->LastImage()\n- ACQUISITION : use ctControl->ReadImage()";
+	prop_desc = "Choose the source of Data given to the image attribute :<br>\n- VIDEO : use ctVideo->LastImage()<br>\n- ACQUISITION : use ctControl->ReadImage()";
 	prop_def  = "VIDEO";
 	vect_data.clear();
 	vect_data.push_back("VIDEO");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "ImageOpMode";
+	prop_desc = "Define ImageOpMode for Roi/Binning/etc...  :<br>\nAvailables values :<br>\n- HardOnly<br>\n- SoftOnly<br>\n- HardAndSoft<br>";
+	prop_def  = "HardAndSoft";
+	vect_data.clear();
+	vect_data.push_back("HardAndSoft");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -977,7 +1167,7 @@ void LimaDetectorClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "FileNbFrames";
-	prop_desc = "";
+	prop_desc = "Define the nombre of frames to push in each saving file.";
 	prop_def  = "1";
 	vect_data.clear();
 	vect_data.push_back("1");
@@ -991,11 +1181,26 @@ void LimaDetectorClass::set_default_property()
 	else
 		add_wiz_dev_prop(prop_name, prop_desc);
 
-	prop_name = "FileWriteMode";
-	prop_desc = "Available only for Nexus format : Fix the SetWriteMode(). <br>\nAvailable values :<br>\n- IMMEDIATE<br>\n- SYNCHRONOUS<br>\n- DELAYED";
-	prop_def  = "IMMEDIATE";
+	prop_name = "FileManagedMode";
+	prop_desc = "Define the File managed Mode :<br>\n- HARDWARE : <br>\n- SOFTWARE  : <br>";
+	prop_def  = "SOFTWARE";
 	vect_data.clear();
-	vect_data.push_back("IMMEDIATE");
+	vect_data.push_back("SOFTWARE");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "FileWriteMode";
+	prop_desc = "Available only for Nexus format : set the SetWriteMode(). <br>\nAvailable values :<br>\n- ASYNCHRONOUS<br>\n- SYNCHRONOUS<br>\n- DELAYED";
+	prop_def  = "ASYNCHRONOUS";
+	vect_data.clear();
+	vect_data.push_back("ASYNCHRONOUS");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -1007,7 +1212,7 @@ void LimaDetectorClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "FileMemoryMode";
-	prop_desc = "Available only for Nexus format : Fix the SetDataItemMemoryMode().<br>\nAvailable values :<br>\n- COPY<br>\n- NO_COPY";
+	prop_desc = "Available only for Nexus format : set the SetDataItemMemoryMode().<br>\nAvailable values :<br>\n- COPY<br>\n- NO_COPY";
 	prop_def  = "COPY";
 	vect_data.clear();
 	vect_data.push_back("COPY");
@@ -1026,36 +1231,6 @@ void LimaDetectorClass::set_default_property()
 	prop_def  = "true";
 	vect_data.clear();
 	vect_data.push_back("true");
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-
-	prop_name = "BufferMaxMemoryPercent";
-	prop_desc = "Define the Percent of Memory reserved by buffer control (from 0 to 100 %).";
-	prop_def  = "70";
-	vect_data.clear();
-	vect_data.push_back("70");
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-
-	prop_name = "UsePrepareCmd";
-	prop_desc = "";
-	prop_def  = "false";
-	vect_data.clear();
-	vect_data.push_back("false");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -1109,6 +1284,51 @@ void LimaDetectorClass::set_default_property()
 	vect_data.push_back("Module");
 	vect_data.push_back("Type");
 	vect_data.push_back("Funct");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "ExpertBufferMaxMemoryPercent";
+	prop_desc = "Define the Percent of Memory reserved to Lima buffer control.<br>\nBufferMaxMemoryPercent = 70, allow a Memory of 1.4 Go. (Default)<br>\nBufferMaxMemoryPercent = 100, allow a Memory of 2 Go. (Maximum)";
+	prop_def  = "70";
+	vect_data.clear();
+	vect_data.push_back("70");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "ExpertNbPoolThread";
+	prop_desc = "Defines the number of threads dedicated to process images in the ProcessLib";
+	prop_def  = "4";
+	vect_data.clear();
+	vect_data.push_back("4");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "ExpertTimeoutCmd";
+	prop_desc = "Define the Timeout (in ms) for some commands (snap/start/stop/prepare).<br>";
+	prop_def  = "5000";
+	vect_data.clear();
+	vect_data.push_back("5000");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -1331,11 +1551,11 @@ void LimaDetectorClass::set_default_property()
 	else
 		add_wiz_dev_prop(prop_name, prop_desc);
 
-	prop_name = "AutoStartVideo";
-	prop_desc = "Allows calling automatically the \"Start\" command when:<br>\n- The device starts.\n- After calling the \"Init\" command.";
-	prop_def  = "false";
+	prop_name = "SpoolID";
+	prop_desc = "";
+	prop_def  = "TO_BE_DEFINED";
 	vect_data.clear();
-	vect_data.push_back("false");
+	vect_data.push_back("TO_BE_DEFINED");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -1368,7 +1588,7 @@ void LimaDetectorClass::write_class_property()
 
 	//	Put title
 	Tango::DbDatum	title("ProjectTitle");
-	string	str_title("LimaDetector");
+	string	str_title("Lima Device Generic");
 	title << str_title;
 	data.push_back(title);
 

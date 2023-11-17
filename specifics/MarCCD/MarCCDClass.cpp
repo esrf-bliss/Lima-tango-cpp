@@ -419,10 +419,25 @@ void MarCCDClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "ReaderTimeout";
-	prop_desc = "During acquisition, this is the time before declaring that is no available image returned by detector. (in ms)";
+	prop_desc = "The timeout before the Reader declares that there are no images in the directory target path. (in ms)";
 	prop_def  = "10000";
 	vect_data.clear();
 	vect_data.push_back("10000");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "ReaderNbRetry";
+	prop_desc = "The number of retry before the Reader declares that there are no images in the directory target path.";
+	prop_def  = "3";
+	vect_data.clear();
+	vect_data.push_back("0");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -585,7 +600,7 @@ void MarCCDClass::write_class_property()
 	//  Put inheritance
 	Tango::DbDatum	inher_datum("InheritedFrom");
 	vector<string> inheritance;
-	inheritance.push_back("Device_4Impl");
+	inheritance.push_back("Tango::Device_4Impl");
 	inher_datum << inheritance;
 	data.push_back(inher_datum);
 

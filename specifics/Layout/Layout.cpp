@@ -108,23 +108,12 @@ Layout::Layout(Tango::DeviceClass *cl, const char *s, const char *d)
 
 void Layout::delete_device()
 {
-    INFO_STREAM << "Layout::delete_device() delete device " << device_name << endl;
+    INFO_STREAM << "Layout::delete_device() delete device " << device_name << endl;    
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());		
     //    Delete device allocated objects
+	DELETE_DEVSTRING_ATTRIBUTE(attr_version_read);
     DELETE_DEVSTRING_ATTRIBUTE(attr_operationType_read);
     DELETE_DEVSTRING_ATTRIBUTE(attr_operationValue_read);
-
-    ////// EMPTY OLD OPERATIONS /////
-    if (!m_mapOperations.empty())
-    {
-        m_mapOperations.clear();
-    }
-
-    //delete task associated to externalOperation
-    if (m_layout_task)
-    {
-        delete m_layout_task;
-        m_layout_task = 0;
-    }
 
 }
 
@@ -139,26 +128,28 @@ void Layout::delete_device()
 void Layout::init_device()
 {
     INFO_STREAM << "Layout::init_device() create device " << device_name << endl;
-
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     // Initialise variables to default values
     //--------------------------------------------
     get_device_property();
-
-    CREATE_DEVSTRING_ATTRIBUTE(attr_operationType_read, 255);
-    CREATE_DEVSTRING_ATTRIBUTE(attr_operationValue_read, 255);
+	
+	CREATE_DEVSTRING_ATTRIBUTE(attr_version_read, MAX_ATTRIBUTE_STRING_LENGTH);
+    CREATE_DEVSTRING_ATTRIBUTE(attr_operationType_read, MAX_ATTRIBUTE_STRING_LENGTH);
+    CREATE_DEVSTRING_ATTRIBUTE(attr_operationValue_read, MAX_ATTRIBUTE_STRING_LENGTH);
 
     //By default INIT, need to ensure that all objets are OK before set the device to STANDBY
     set_state(Tango::INIT);
     m_is_device_initialized = false;
     m_status_message.str("");
-    m_layout_task = 0;
+	m_mapOperations.clear();
+    m_layout_tasks.clear();
     m_ct = 0;
-    yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
+	
     try
     {
         //- get the main object used to pilot the lima framework
         //in fact LimaDetector is create the singleton control objet
-        //so this call, will only return existing object, no need to give it the ip !!
+        //so this call, will only return existing object!
         m_ct = ControlFactory::instance().get_control("Layout");
     }
     catch (Exception& e)
@@ -183,9 +174,6 @@ void Layout::init_device()
     //write at init, only if device is correctly initialized
     if (m_is_device_initialized)
     {
-        //prepare l'externalOperation Task
-        m_layout_task = new LayoutTask("NONE", 0);
-
         try
         {
             for (int i = 0; i < memorizedOperationTypes.size(); i++)
@@ -207,14 +195,20 @@ void Layout::init_device()
 
                 // AddOp()
                 INFO_STREAM << "Write tango hardware at Init - Add Operations to the processLib." << endl;
-                add_external_operation(memorizedOperationLevels.at(i));
-                operationParams params = {attr_operationType_write, attr_operationValue_write};
-                m_mapOperations[i] = params;
+                add_external_operation(memorizedOperationLevels.at(i));               
             }
         }
+		catch(ProcessException& p)
+		{
+            INFO_STREAM << "Initialization Failed : " << p.getErrMsg() << endl;
+            m_status_message << "Initialization Failed : " << p.getErrMsg( ) << endl;
+            m_is_device_initialized = false;
+            set_state(Tango::FAULT);
+            return;
+		}		
         catch (Exception& e)
         {
-            INFO_STREAM << "Initialization Failed 2: " << e.getErrMsg() << endl;
+            INFO_STREAM << "Initialization Failed : " << e.getErrMsg() << endl;
             m_status_message << "Initialization Failed : " << e.getErrMsg( ) << endl;
             m_is_device_initialized = false;
             set_state(Tango::FAULT);
@@ -251,55 +245,52 @@ void Layout::get_device_property()
 
     //	Read device properties from database.(Automatic code generation)
     //------------------------------------------------------------------
-    Tango::DbData	dev_prop;
-    dev_prop.push_back(Tango::DbDatum("MemorizedOperationTypes"));
-    dev_prop.push_back(Tango::DbDatum("MemorizedOperationValues"));
-    dev_prop.push_back(Tango::DbDatum("MemorizedOperationLevels"));
+	Tango::DbData	dev_prop;
+	dev_prop.push_back(Tango::DbDatum("MemorizedOperationTypes"));
+	dev_prop.push_back(Tango::DbDatum("MemorizedOperationValues"));
+	dev_prop.push_back(Tango::DbDatum("MemorizedOperationLevels"));
 
-    //	Call database and extract values
-    //--------------------------------------------
-    if (Tango::Util::instance()->_UseDb == true)
-        get_db_device()->get_property(dev_prop);
-    Tango::DbDatum	def_prop, cl_prop;
-    LayoutClass	*ds_class =
-    (static_cast<LayoutClass *>(get_device_class()));
-    int	i = -1;
+	//	Call database and extract values
+	//--------------------------------------------
+	if (Tango::Util::instance()->_UseDb==true)
+		get_db_device()->get_property(dev_prop);
+	Tango::DbDatum	def_prop, cl_prop;
+	LayoutClass	*ds_class =
+		(static_cast<LayoutClass *>(get_device_class()));
+	int	i = -1;
 
-    //	Try to initialize MemorizedOperationTypes from class property
-    cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-    if (cl_prop.is_empty() == false)	cl_prop  >>  memorizedOperationTypes;
-    else
-    {
-        //	Try to initialize MemorizedOperationTypes from default device value
-        def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-        if (def_prop.is_empty() == false)	def_prop  >>  memorizedOperationTypes;
-    }
-    //	And try to extract MemorizedOperationTypes value from database
-    if (dev_prop[i].is_empty() == false)	dev_prop[i]  >>  memorizedOperationTypes;
+	//	Try to initialize MemorizedOperationTypes from class property
+	cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+	if (cl_prop.is_empty()==false)	cl_prop  >>  memorizedOperationTypes;
+	else {
+		//	Try to initialize MemorizedOperationTypes from default device value
+		def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+		if (def_prop.is_empty()==false)	def_prop  >>  memorizedOperationTypes;
+	}
+	//	And try to extract MemorizedOperationTypes value from database
+	if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  memorizedOperationTypes;
 
-    //	Try to initialize MemorizedOperationValues from class property
-    cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-    if (cl_prop.is_empty() == false)	cl_prop  >>  memorizedOperationValues;
-    else
-    {
-        //	Try to initialize MemorizedOperationValues from default device value
-        def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-        if (def_prop.is_empty() == false)	def_prop  >>  memorizedOperationValues;
-    }
-    //	And try to extract MemorizedOperationValues value from database
-    if (dev_prop[i].is_empty() == false)	dev_prop[i]  >>  memorizedOperationValues;
+	//	Try to initialize MemorizedOperationValues from class property
+	cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+	if (cl_prop.is_empty()==false)	cl_prop  >>  memorizedOperationValues;
+	else {
+		//	Try to initialize MemorizedOperationValues from default device value
+		def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+		if (def_prop.is_empty()==false)	def_prop  >>  memorizedOperationValues;
+	}
+	//	And try to extract MemorizedOperationValues value from database
+	if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  memorizedOperationValues;
 
-    //	Try to initialize MemorizedOperationLevels from class property
-    cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-    if (cl_prop.is_empty() == false)	cl_prop  >>  memorizedOperationLevels;
-    else
-    {
-        //	Try to initialize MemorizedOperationLevels from default device value
-        def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-        if (def_prop.is_empty() == false)	def_prop  >>  memorizedOperationLevels;
-    }
-    //	And try to extract MemorizedOperationLevels value from database
-    if (dev_prop[i].is_empty() == false)	dev_prop[i]  >>  memorizedOperationLevels;
+	//	Try to initialize MemorizedOperationLevels from class property
+	cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+	if (cl_prop.is_empty()==false)	cl_prop  >>  memorizedOperationLevels;
+	else {
+		//	Try to initialize MemorizedOperationLevels from default device value
+		def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+		if (def_prop.is_empty()==false)	def_prop  >>  memorizedOperationLevels;
+	}
+	//	And try to extract MemorizedOperationLevels value from database
+	if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  memorizedOperationLevels;
 
 
 
@@ -325,11 +316,12 @@ void Layout::get_device_property()
 
 void Layout::always_executed_hook()
 {
-    DEBUG_STREAM << "Layout::always_executed_hook() entering... " << endl;
+    yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     try
-    {
-        yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
-        m_status_message.str("");
+    {        
+        if(!m_is_device_initialized)//nothing to do ! device need init
+            return;
+
         //- get the singleton control objet used to pilot the lima framework
         m_ct = ControlFactory::instance().get_control("Layout");
 
@@ -370,6 +362,33 @@ void Layout::read_attr_hardware(vector<long> &attr_list)
 }
 //+----------------------------------------------------------------------------
 //
+// method : 		Layout::read_version
+// 
+// description : 	Extract real attribute values for version acquisition result.
+//
+//-----------------------------------------------------------------------------
+void Layout::read_version(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Layout::read_version(Tango::Attribute &attr) entering... "<< endl;
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());	
+	try
+	{
+		strcpy(*attr_version_read, CURRENT_VERSION);
+		attr.set_value(attr_version_read);
+	}
+	catch(Tango::DevFailed& df)
+	{
+		ERROR_STREAM << df << endl;
+		//- rethrow exception
+		Tango::Except::re_throw_exception(df,
+										"TANGO_DEVICE_ERROR",
+										string(df.errors[0].desc).c_str(),
+										"Layout::read_version()");
+	}	
+}
+
+//+----------------------------------------------------------------------------
+//
 // method : 		Layout::read_operationsList
 // 
 // description : 	Extract real attribute values for operationsList acquisition result.
@@ -379,22 +398,26 @@ void Layout::read_attr_hardware(vector<long> &attr_list)
 void Layout::read_operationsList(Tango::Attribute &attr)
 {
     DEBUG_STREAM << "Layout::read_operationsList(Tango::Attribute &attr) entering... " << endl;
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     Tango::DevString *ptr = new Tango::DevString[ 1024 ];
 
-    int nbItem = 0;
+    int item_idx = 0;
+	ptr[item_idx] = CORBA::string_dup("");
     for (std::map<long, operationParams >::iterator itMap = m_mapOperations.begin(); itMap != m_mapOperations.end(); ++itMap)
     {
-
-        std::stringstream item("");
-        item << "Level = " << itMap->first
-        << " : "
-        << "OperationType = " << itMap->second.operationType
-        << " : "
-        << "OperationValue = " << itMap->second.operationValue;
-        ptr[nbItem] = CORBA::string_dup((item.str()).c_str());
-        nbItem++;
+		if(itMap->second.operationType != "NONE")
+		{
+			std::stringstream item("");
+			item << "runLevel = " << itMap->first
+			<< " : "
+			<< "Operation = " << itMap->second.operationType
+			<< " ( "<< itMap->second.operationValue<<" )";
+			ptr[item_idx] = CORBA::string_dup((item.str()).c_str());
+			item_idx++;
+		}
     }
-    attr.set_value(ptr, nbItem, 0, true);
+	
+    attr.set_value(ptr, item_idx, 0, true);
 }
 
 
@@ -409,6 +432,7 @@ void Layout::read_operationsList(Tango::Attribute &attr)
 void Layout::read_operationType(Tango::Attribute &attr)
 {
     DEBUG_STREAM << "Layout::read_operationType(Tango::Attribute &attr) entering... " << endl;
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     try
     {
         attr.set_value(attr_operationType_read);
@@ -436,6 +460,7 @@ void Layout::read_operationType(Tango::Attribute &attr)
 void Layout::write_operationType(Tango::WAttribute &attr)
 {
     DEBUG_STREAM << "Layout::write_operationType(Tango::WAttribute &attr) entering... " << endl;
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     try
     {
         m_operationType = *attr_operationType_read; //memorize previous valid value
@@ -449,12 +474,15 @@ void Layout::write_operationType(Tango::WAttribute &attr)
             (current != ">>") &&
             (current != "<<") &&
             (current != "FLIP") &&
+			(current != "ROTATION") &&
+			(current != "CIRPAD_2X10") &&
+			(current != "CIRPAD_4X5") &&
             (current != "NONE")
             )
         {
-            strcpy(attr_operationType_write, m_operationType.c_str());
-            Tango::Except::throw_exception((const char*) ("CONFIGURATION_ERROR"),
-                                           (const char*) ("Possible operationType values are:"
+            attr_operationType_write = const_cast<Tango::DevString>(m_operationType.c_str());
+            Tango::Except::throw_exception("CONFIGURATION_ERROR",
+                                           "Possible operationType values are:"
                                            "\n+"
                                            "\n-"
                                            "\n*"
@@ -462,8 +490,11 @@ void Layout::write_operationType(Tango::WAttribute &attr)
                                            "\n>>"
                                            "\n<<"
                                            "\nFLIP"
-                                           "\nNONE"),
-                                           (const char*) ("Layout::write_operationType"));
+										   "\nROTATION"
+										   "\nCIRPAD_2X10"
+										   "\nCIRPAD_4X5"										   
+                                           "\nNONE",
+                                           "Layout::write_operationType");
         }
 
         //- THIS IS AN AVAILABLE operationType     
@@ -493,6 +524,7 @@ void Layout::write_operationType(Tango::WAttribute &attr)
 void Layout::read_operationValue(Tango::Attribute &attr)
 {
     DEBUG_STREAM << "Layout::read_operationValue(Tango::Attribute &attr) entering... " << endl;
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     try
     {
         attr.set_value(attr_operationValue_read);
@@ -520,6 +552,7 @@ void Layout::read_operationValue(Tango::Attribute &attr)
 void Layout::write_operationValue(Tango::WAttribute &attr)
 {
     DEBUG_STREAM << "Layout::write_operationValue(Tango::WAttribute &attr) entering... " << endl;
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     try
     {
         attr.get_write_value(attr_operationValue_write);
@@ -554,11 +587,12 @@ void Layout::delete_external_operation(long level)
     if (m_ct != 0)
     {
         try
-        {
-            std::stringstream opId("");
-            opId << level;
-            INFO_STREAM << "delOp  " << opId.str() << endl;
-            m_ct->externalOperation()->delOp(opId.str());
+        {			
+			std::stringstream opId("");
+			opId << m_mapOperations[level].opId;
+			INFO_STREAM << "\t- delOp [" << opId.str() << "]"<<endl;
+			m_ct->externalOperation()->delOp(opId.str());
+			m_mapOperations.erase(level);
         }
         catch (Exception& e)
         {
@@ -584,20 +618,15 @@ void Layout::add_external_operation(long level)
     DEBUG_STREAM << "Layout::add_external_operation() entering ... " << endl;
     //add a new operation
     yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
+	transform(m_operationType.begin(), m_operationType.end(), m_operationType.begin(), ::toupper);
     if (m_ct != 0)
     {
         try
-        {
-
+        {			
+            bool flipX = false;
+            bool flipY = false;			
             if (m_operationType == "FLIP")
             {
-                //create new operation
-                std::stringstream opId("");
-                SoftOpInstance op;
-                opId << level;
-                bool flipX = false;
-                bool flipY = false;
-                m_ct->externalOperation()->addOp(FLIP, opId.str(), level, op);
                 if (m_operationValue == "X")
                 {
                     flipX = true;
@@ -613,32 +642,87 @@ void Layout::add_external_operation(long level)
                 }
                 else
                 {
-                    Tango::Except::throw_exception(	(const char*) ("CONFIGURATION_ERROR"),
-                                                   (const char*) ("Available Flip Modes are:"
+                    Tango::Except::throw_exception("CONFIGURATION_ERROR",
+                                                   "Available Flip Modes are:"
                                                    "\n- X"
                                                    "\n- Y"
-                                                   "\n- XY"),
-                                                   (const char*) ("Layout::add_external_operation"));
+                                                   "\n- XY",
+                                                   "Layout::add_external_operation");
                 }
+				
+                //create new operation
+                std::stringstream opId("");
+                SoftOpInstance op;
+                opId << level<<":FLIP ("<<m_operationValue<<")";
+				INFO_STREAM << "\t- addOp [" << opId.str() << "]"<<endl;
+				operationParams params = {opId.str(), attr_operationType_write, attr_operationValue_write};
+				m_mapOperations[level] = params;				
+                m_ct->externalOperation()->addOp(FLIP, opId.str(), level, op);				
                 (reinterpret_cast<SoftOpFlip*> (op.m_opt))->setFlip(flipX, flipY);
                 return;
             }
 
+            if (m_operationType == "ROTATION")
+            {                
+				SoftOpRotation::Type type;
+                if (m_operationValue == "90")
+                {
+                    type = SoftOpRotation::R_90;
+                }
+                else if (m_operationValue == "180")
+                {
+                    type = SoftOpRotation::R_180;
+                }
+                else if (m_operationValue == "270")
+                {
+					type = SoftOpRotation::R_270;
+                }
+                else
+                {
+                    Tango::Except::throw_exception("CONFIGURATION_ERROR",
+                                                   "Available Rotation Modes are:"
+                                                   "\n- 90"
+                                                   "\n- 180"
+                                                   "\n- 270",
+                                                   "Layout::add_external_operation");
+                }
+				//create new operation
+                std::stringstream opId("");
+                SoftOpInstance op;
+                opId << level<<":ROTATION ("<<m_operationValue<<")";
+				INFO_STREAM << "\t- addOp [" << opId.str() << "]"<<endl;
+				operationParams params = {opId.str(), attr_operationType_write, attr_operationValue_write};
+				m_mapOperations[level] = params;						
+                m_ct->externalOperation()->addOp(ROTATION, opId.str(), level, op);				
+                (reinterpret_cast<SoftOpRotation*> (op.m_opt))->setType(type);
+                return;
+            }
+			
             if (m_operationType == "+"	||
                 m_operationType == "-"	||
                 m_operationType == "*"	||
                 m_operationType == "/"	||
                 m_operationType == "<<"	||
-                m_operationType == ">>" )
+                m_operationType == ">>" ||
+				m_operationType == "CIRPAD_2X10" ||
+				m_operationType == "CIRPAD_4X5" 
+				)
             {
                 //create new operation
                 std::stringstream opId("");
                 SoftOpInstance op;
-                opId << level;
+				opId << level<<":"<<m_operationType<<" ("<<m_operationValue<<")";
+				INFO_STREAM << "\t- addOp [" << opId.str() << "]"<<endl;
+				operationParams params = {opId.str(), attr_operationType_write, attr_operationValue_write};
+				m_mapOperations[level] = params;				
                 m_ct->externalOperation()->addOp(USER_LINK_TASK, opId.str(), level, op);
-                m_layout_task->setOperationType(attr_operationType_write);
-                m_layout_task->setOperationValue(yat::XString<double>::to_num(m_operationValue));
-                (reinterpret_cast<SoftUserLinkTask*> (op.m_opt))->setLinkTask(m_layout_task);
+
+				//prepare l'externalOperation Task
+				LayoutTask* task = new LayoutTask("NONE", 0);
+                task->setOperationType(attr_operationType_write);
+                task->setOperationValue(yat::XString<double>::to_num(m_operationValue));				 
+				m_layout_tasks.push_back(task);
+                (reinterpret_cast<SoftUserLinkTask*> (op.m_opt))->setLinkTask(task);
                 return;
             }
 
@@ -680,6 +764,7 @@ void Layout::add_external_operation(long level)
 void Layout::memorize_all_operations(void)
 {
     DEBUG_STREAM << "Layout::memorize_all_operations() entering ... " << endl;
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     //Memorize operations
 
     std::vector<long> vecOpLevel;
@@ -705,25 +790,21 @@ void Layout::memorize_all_operations(void)
  *
  *	description:	method to execute "AddOperation"
  *	Add Lima external operation in order to transform the image acquired from the detector.<br>
- *	User must first define the operationType, operationValue<br>
+ *	User must first define the operationType, operationValue attributes<br>
  *	argin will define the level of operation.
  *
  * @param	argin	
  *
  */
 //+------------------------------------------------------------------
-
 void Layout::add_operation(Tango::DevLong argin)
 {
-    DEBUG_STREAM << "Layout::add_operation(): entering... !" << endl;
-
+    INFO_STREAM << "Layout::add_operation(): entering... !" << endl;
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
     //	Add your own code to control device here
     try
     {
-        yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
         add_external_operation(argin);
-        operationParams params = {attr_operationType_write, attr_operationValue_write};
-        m_mapOperations[argin] = params;
         memorize_all_operations();
     }
     catch (Exception& e)
@@ -736,6 +817,45 @@ void Layout::add_operation(Tango::DevLong argin)
                                        "Layout::add_operation");
     }
 
+}
+
+
+//+------------------------------------------------------------------
+/**
+ *	method:	Layout::remove_operation
+ *
+ *	description:	method to execute "RemoveOperation"
+ *	Remove a Lima external operation previously defined at the the level = argin.<br>
+ *
+ * @param	argin	
+ *
+ */
+//+------------------------------------------------------------------
+void Layout::remove_operation(Tango::DevLong argin)
+{
+    INFO_STREAM << "Layout::remove_operation(): entering... !" << endl;
+
+    //	Add your own code to control device here
+	yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
+    try
+    {
+		std::map<long, operationParams >::iterator it;			
+		it = m_mapOperations.find (argin);	
+		if (it != m_mapOperations.end())
+		{		
+			delete_external_operation(argin);
+			memorize_all_operations();			
+		}
+    }
+    catch (Exception& e)
+    {
+
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception("TANGO_DEVICE_ERROR",
+                                       e.getErrMsg().c_str(),
+                                       "Layout::remove_operation");
+    }
 }
 
 //+------------------------------------------------------------------
@@ -781,41 +901,7 @@ Tango::DevState Layout::dev_state()
 
 
 
-//+------------------------------------------------------------------
-/**
- *	method:	Layout::remove_operation
- *
- *	description:	method to execute "RemoveOperation"
- *	Remove a Lima external operation previously defined at the the level = argin.<br>
- *
- * @param	argin	
- *
- */
-//+------------------------------------------------------------------
 
-void Layout::remove_operation(Tango::DevLong argin)
-{
-    DEBUG_STREAM << "Layout::remove_operation(): entering... !" << endl;
-
-    //	Add your own code to control device here
-    //	Add your own code to control device here
-    try
-    {
-        yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
-        delete_external_operation(argin);
-        m_mapOperations.erase(argin);
-        memorize_all_operations();
-    }
-    catch (Exception& e)
-    {
-
-        ERROR_STREAM << e.getErrMsg() << endl;
-        //- throw exception
-        Tango::Except::throw_exception("TANGO_DEVICE_ERROR",
-                                       e.getErrMsg().c_str(),
-                                       "Layout::remove_operation");
-    }
-}
 
 
 }	//	namespace

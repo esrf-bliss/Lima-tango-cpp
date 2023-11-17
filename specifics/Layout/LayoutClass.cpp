@@ -314,13 +314,23 @@ void LayoutClass::device_factory(const Tango::DevVarStringArray *devlist_ptr)
 //-----------------------------------------------------------------------------
 void LayoutClass::attribute_factory(vector<Tango::Attr *> &att_list)
 {
+	//	Attribute : version
+	versionAttrib	*version = new versionAttrib();
+	Tango::UserDefaultAttrProp	version_prop;
+	version_prop.set_unit(" ");
+	version_prop.set_standard_unit(" ");
+	version_prop.set_display_unit(" ");
+	version_prop.set_description("Display the Version of the Layout Device");
+	version->set_default_properties(version_prop);
+	att_list.push_back(version);
+
 	//	Attribute : operationType
 	operationTypeAttrib	*operation_type = new operationTypeAttrib();
 	Tango::UserDefaultAttrProp	operation_type_prop;
 	operation_type_prop.set_unit(" ");
 	operation_type_prop.set_standard_unit(" ");
 	operation_type_prop.set_display_unit(" ");
-	operation_type_prop.set_description("Arithmetic available types :<br>\n+ <br>\n- <br>\n* <br>\n/ <br>\n>> <br>\n<< <br>\nFLIP<br>\nNONE <br>");
+	operation_type_prop.set_description("Arithmetic available types :<br>\n+ <br>\n- <br>\n* <br>\n/ <br>\n>> <br>\n<< <br>\nFLIP<br>\nROTATION<br>\nCIRPAD_2X10<br>\nCIRPAD_4X5<br>\nNONE <br>");
 	operation_type->set_default_properties(operation_type_prop);
 	att_list.push_back(operation_type);
 
@@ -330,12 +340,18 @@ void LayoutClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	operation_value_prop.set_unit(" ");
 	operation_value_prop.set_display_unit(" ");
 	operation_value_prop.set_format("%s");
-	operation_value_prop.set_description("Arithmetic available values :<br>\nany numeric value\n\nFlip available values :<br>\nX<br>\nY<br>\nXY<br>\n\n");
+	operation_value_prop.set_description("Arithmetic available values :<br>\nany numeric value\n\nFlip available values :<br>\nX<br>\nY<br>\nXY<br>\n\nRotation available values :<br>\n90<br>\n180<br>\n270<br>\n");
 	operation_value->set_default_properties(operation_value_prop);
 	att_list.push_back(operation_value);
 
 	//	Attribute : operationsList
 	operationsListAttrib	*operations_list = new operationsListAttrib();
+	Tango::UserDefaultAttrProp	operations_list_prop;
+	operations_list_prop.set_unit(" ");
+	operations_list_prop.set_standard_unit(" ");
+	operations_list_prop.set_display_unit(" ");
+	operations_list_prop.set_description("Enumerate all Layout active 'post processing' operations on the image.");
+	operations_list->set_default_properties(operations_list_prop);
 	att_list.push_back(operations_list);
 
 	//	End of Automatic code generation
@@ -463,14 +479,14 @@ void LayoutClass::write_class_property()
 
 	//	Put title
 	Tango::DbDatum	title("ProjectTitle");
-	string	str_title("Lima");
+	string	str_title("Lima Layout Device Specific");
 	title << str_title;
 	data.push_back(title);
 
 	//	Put Description
 	Tango::DbDatum	description("Description");
 	vector<string>	str_desc;
-	str_desc.push_back("  ");
+	str_desc.push_back("Lima Device Specific for post process image");
 	description << str_desc;
 	data.push_back(description);
 		

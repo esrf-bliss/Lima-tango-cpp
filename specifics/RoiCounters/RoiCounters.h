@@ -47,13 +47,21 @@
 #include <tango.h>
 #include <yat4tango/DynamicInterfaceManager.h>
 #include <yat4tango/PropertyHelper.h>
+#include <yat4tango/InnerAppender.h>
 #include <yat/threading/Mutex.h>
 #include <yat/utils/XString.h>
+#include <yat/time/Timer.h>
+#include <yat/Version.h>
+/*
+#include <yat/memory/DataBuffer.h>
+*/
+#include <cctype>
 
 #include "lima/HwInterface.h"
 #include "lima/CtControl.h"
 #include "lima/CtAcquisition.h"
 #include "lima/CtImage.h"
+#include "lima/CtVideo.h"
 #include "lima/SoftOpId.h"
 #include "lima/SoftOpExternalMgr.h"
 #include "processlib/Data.h"
@@ -63,12 +71,20 @@
 
 #define MAX_ATTRIBUTE_STRING_LENGTH     256
 #define MAX_NB_ROICOUNTERS              32
-
-#define CURRENT_VERSION                 "1.0.0"
+#define NB_COORDINATES                  4
+#define CURRENT_VERSION                 "2.0.0"
 
 
 namespace RoiCounters_ns
 {
+
+template <typename T>
+class UserAttribute 
+{
+public:
+	T scalar;
+	std::vector<T> spectrum;
+};
 
 /**
  * Class Description:
@@ -99,6 +115,8 @@ public:
      */
     //@{
 		Tango::DevString	*attr_version_read;
+		Tango::DevULong	attr_runLevel_write;
+		Tango::DevString	*attr_operationsList_read;
 //@}
 
     /**
@@ -127,6 +145,14 @@ public:
  *	For each Region of Interest . (Height)
  */
 	vector<long>	__height;
+/**
+ *	Define the max number of points of spectrum attributes<br>
+ */
+	Tango::DevULong	expertSpectrumMaxDataSize;
+/**
+ *	Memorize/Define the runLevel attribute<br>
+ */
+	Tango::DevULong	memorizedRunLevel;
 //@}
 
     /**
@@ -207,9 +233,29 @@ public:
  */
 	virtual void read_version(Tango::Attribute &attr);
 /**
+ *	Extract real attribute values for runLevel acquisition result.
+ */
+	virtual void read_runLevel(Tango::Attribute &attr);
+/**
+ *	Write runLevel attribute values to hardware.
+ */
+	virtual void write_runLevel(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for operationsList acquisition result.
+ */
+	virtual void read_operationsList(Tango::Attribute &attr);
+/**
  *	Read/Write allowed for version attribute.
  */
 	virtual bool is_version_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for runLevel attribute.
+ */
+	virtual bool is_runLevel_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for operationsList attribute.
+ */
+	virtual bool is_operationsList_allowed(Tango::AttReqType type);
 /**
  * This command gets the device state (stored in its <i>device_state</i> data member) and returns it to the caller.
  *	@return	State Code
@@ -228,22 +274,58 @@ public:
     void update_roi();
     void read_roi();
     void remove_roi(std::string id);
+
+    ///generic methode to copy a region of interest from the image
     template <typename T>
-    void create_dynamic_attribute(std::string name, int type, Tango::AttrDataFormat format, Tango::AttrWriteType writetype, T* user_data);
-    bool create_all_dynamic_attributes(void);
+    Data copy_roi_from_image(Data& image_data, int roi_num);
+
+    ///generic method to create a tango dynamic attribute
+    template <class F1, class F2>
+    void create_attribute(	std::string name,
+            int data_type,
+            Tango::AttrDataFormat data_format,
+            Tango::AttrWriteType access_type,
+            Tango::DispLevel disp_level,
+            const std::string& unit,
+            const std::string& format,
+            const std::string& desc,
+            F1 read_callback,
+            F2 write_callback,
+            yat::Any user_data); //put any user data attached to this attribute
+
+    bool create_scalar_dynamic_attributes(void);
+    bool create_image_dynamic_attributes(void);
     bool is_device_initialized()
     {
         return m_is_device_initialized;
     };
-    
+
     //- the dyn. attrs. read callback
-    void read_stats_callback (yat4tango::DynamicAttributeReadCallbackData& cbd);
-    
+    void read_stats_scalar_callback (yat4tango::DynamicAttributeReadCallbackData& cbd);
+
+    //- the dyn. attrs. read callback
+    void read_stats_spectrum_callback (yat4tango::DynamicAttributeReadCallbackData& cbd);
+
     //- the dyn. attrs. read callback    
     void read_rois_callback (yat4tango::DynamicAttributeReadCallbackData& cbd);
 
     //- the dyn. attrs. write callback
     void write_rois_callback (yat4tango::DynamicAttributeWriteCallbackData& cbd);
+
+    //- the dyn. attrs. read callback
+    void read_image_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+    
+    /// callback methods for tango dyn attributes - NULL
+    void read_callback_null(yat4tango::DynamicAttributeReadCallbackData& cbd)
+    {
+        /*nop*/
+    }
+
+    /// callback methods for tango dyn attributes - NULL
+    void write_callback_null(yat4tango::DynamicAttributeWriteCallbackData& cbd)
+    {
+        /*nop*/
+    }
 
 protected:
     //	Add your own data members here
@@ -257,21 +339,39 @@ protected:
 
     //dynamic attributes objects        
     yat4tango::DynamicInterfaceManager m_dim;
-    
-    Tango::DevULong     attr_x_array[MAX_NB_ROICOUNTERS];           //at maximum 32 rois counters can be managed
-    Tango::DevULong     attr_y_array[MAX_NB_ROICOUNTERS];           //at maximum 32 rois counters can be managed
-    Tango::DevULong     attr_width_array[MAX_NB_ROICOUNTERS];       //at maximum 32 rois counters can be managed
-    Tango::DevULong     attr_height_array[MAX_NB_ROICOUNTERS];      //at maximum 32 rois counters can be managed
-    Tango::DevULong     attr_frameNumber_value;                     //at maximum 32 rois counters can be managed
-    Tango::DevDouble    attr_sum_array[MAX_NB_ROICOUNTERS];         //at maximum 32 rois counters can be managed
-    Tango::DevDouble    attr_average_array[MAX_NB_ROICOUNTERS];     //at maximum 32 rois counters can be managed
-    Tango::DevDouble    attr_std_array[MAX_NB_ROICOUNTERS];         //at maximum 32 rois counters can be managed
-    Tango::DevDouble    attr_minValue_array[MAX_NB_ROICOUNTERS];    //at maximum 32 rois counters can be managed
-    Tango::DevDouble    attr_maxValue_array[MAX_NB_ROICOUNTERS];    //at maximum 32 rois counters can be managed        
-    
+    Tango::DevULong     attr_frameNumber_value;
+    Data                m_image_data_roi;
+    //MAX_NB_ROICOUNTERS rois counters can be managed    
+	//each element of vector is related to a roi
+    std::vector<Tango::DevULong>     attr_x_arrays;
+    std::vector<Tango::DevULong>     attr_y_arrays;
+    std::vector<Tango::DevULong>     attr_width_arrays;
+    std::vector<Tango::DevULong>     attr_height_arrays;
+    std::vector<Tango::DevString>    attr_coordinates_arrays;
+	//foreach roi, we will have a scalar attribute and a spectrum attribute, this why we use UserAttribute as type
+    std::vector<UserAttribute<Tango::DevDouble> > 	attr_sum_arrays;
+    std::vector<UserAttribute<Tango::DevDouble> > 	attr_average_arrays;
+    std::vector<UserAttribute<Tango::DevDouble> > 	attr_std_arrays;
+    std::vector<UserAttribute<Tango::DevDouble> > 	attr_minValue_arrays;
+    std::vector<UserAttribute<Tango::DevLong> > 	attr_minX_arrays;
+    std::vector<UserAttribute<Tango::DevLong> > 	attr_minY_arrays;
+    std::vector<UserAttribute<Tango::DevDouble> > 	attr_maxValue_arrays;    
+    std::vector<UserAttribute<Tango::DevLong> > 	attr_maxX_arrays;
+    std::vector<UserAttribute<Tango::DevLong> > 	attr_maxY_arrays;    
+/*
+    yat::CircularBuffer<UserAttribute<Tango::DevDouble> > attr_sum_arrays_circular;
+*/
+    std::vector<std::string>         m_operations_list;
 
+    // Parse the string into 4 numbers and push it into current attributes
+    void process_coordinates(Tango::DevString* str,int attrIndex);
 } ;
 
 }	// namespace_ns
 
-#endif	// _ROICOUNTERS_H
+///////////////////////////////////////////////////////////////////////////////
+//// INCLUDE TEMPLATE IMPLEMENTAION
+///////////////////////////////////////////////////////////////////////////////    
+#include "RoiCounters.hpp"
+
+#endif // _ROICOUNTERS_H

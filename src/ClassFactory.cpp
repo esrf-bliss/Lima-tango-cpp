@@ -47,12 +47,12 @@ static const char *RcsId = "$Id:  $";
 #include <RoiCountersClass.h>
 #endif
 
-#ifdef SIMULATOR_ENABLED
-#include <SimulatorCCDClass.h>
+#ifdef MASK_ENABLED
+#include <MaskClass.h>
 #endif
 
-#ifdef AVIEX_ENABLED
-#include <AviexCCDClass.h>
+#ifdef SIMULATOR_ENABLED
+#include <SimulatorCCDClass.h>
 #endif
 
 #ifdef BASLER_ENABLED
@@ -63,6 +63,10 @@ static const char *RcsId = "$Id:  $";
 #include <PilatusPixelDetectorClass.h>
 #endif
 
+#ifdef IMXPAD_ENABLED
+#include <ImXpadClass.h>
+#endif
+
 #ifdef XPAD_ENABLED
 #include <XpadPixelDetectorClass.h>
 #endif
@@ -71,12 +75,12 @@ static const char *RcsId = "$Id:  $";
 #include <MarCCDClass.h>
 #endif
 
-#ifdef ADSC_ENABLED
-#include <AdscCCDClass.h>
+#ifdef MAXIPIX_ENABLED
+#include <MaxipixClass.h>
 #endif
 
-#ifdef PROSILICA_ENABLED
-#include <ProsilicaCCDClass.h>
+#ifdef SPECTRUMONE_ENABLED
+#include <SpectrumOneCCDClass.h>
 #endif
 
 #ifdef PRINCETON_ENABLED
@@ -99,20 +103,44 @@ static const char *RcsId = "$Id:  $";
 #include <AndorCCDClass.h>
 #endif
 
-#ifdef ANDOR3_ENABLED
-#include <Andor3Class.h>
-#endif
-
-#ifdef VIEWORKSVP_ENABLED
-#include <VieworksVPClass.h>
-#endif
-
 #ifdef HAMAMATSU_ENABLED
 #include <HamamatsuClass.h>
 #endif
 
 #ifdef EIGER_ENABLED
 #include <EigerClass.h>
+#endif
+
+#ifdef SLSJUNGFRAU_ENABLED
+#include <SlsJungfrauClass.h>
+#endif
+
+#ifdef SLSEIGER_ENABLED
+#include <SlsEigerClass.h>
+#endif
+
+#ifdef LAMBDA_ENABLED
+#include <LambdaClass.h>
+#endif
+
+#ifdef UVIEW_ENABLED
+#include <UviewCCDClass.h>
+#endif
+
+#ifdef DHYANA_ENABLED
+#include <DhyanaClass.h>
+#endif
+
+#ifdef DHYANA6060_ENABLED
+#include <Dhyana6060Class.h>
+#endif
+
+#ifdef UFXC_ENABLED
+#include <UfxcClass.h>
+#endif
+
+#ifdef SPECTRALINSTRUMENT_ENABLED  
+#include <SpectralInstrumentClass.h>
 #endif
 
 #ifndef WIN32
@@ -130,10 +158,6 @@ void Tango::DServer::class_factory()
 #ifdef SIMULATOR_ENABLED
     add_class(SimulatorCCD_ns::SimulatorCCDClass::init("SimulatorCCD"));
 #endif
-
-#ifdef AVIEX_ENABLED
-    add_class(AviexCCD_ns::AviexCCDClass::init("AviexCCD"));
-#endif
     
 #ifdef BASLER_ENABLED
     add_class(BaslerCCD_ns::BaslerCCDClass::init("BaslerCCD"));
@@ -143,6 +167,10 @@ void Tango::DServer::class_factory()
     add_class(PilatusPixelDetector_ns::PilatusPixelDetectorClass::init("PilatusPixelDetector"));
 #endif
 
+#ifdef IMXPAD_ENABLED	
+    add_class(ImXpad_ns::ImXpadClass::init("ImXpad"));
+#endif
+    
 #ifdef XPAD_ENABLED	
     add_class(XpadPixelDetector_ns::XpadPixelDetectorClass::init("XpadPixelDetector"));
 #endif
@@ -151,12 +179,12 @@ void Tango::DServer::class_factory()
     add_class(MarCCD_ns::MarCCDClass::init("MarCCD"));
 #endif
 
-#ifdef ADSC_ENABLED	
-    add_class(AdscCCD_ns::AdscCCDClass::init("AdscCCD"));
+#ifdef MAXIPIX_ENABLED	
+    add_class(Maxipix_ns::MaxipixClass::init("Maxipix"));
 #endif
-
-#ifdef PROSILICA_ENABLED
-    add_class(ProsilicaCCD_ns::ProsilicaCCDClass::init("ProsilicaCCD"));
+    
+#ifdef SPECTRUMONE_ENABLED
+    add_class(SpectrumOneCCD_ns::SpectrumOneCCDClass::init("SpectrumOneCCD"));
 #endif
 
 #ifdef PRINCETON_ENABLED
@@ -179,14 +207,6 @@ void Tango::DServer::class_factory()
     add_class(AndorCCD_ns::AndorCCDClass::init("AndorCCD"));
 #endif
 	
-#ifdef ANDOR3_ENABLED
-    add_class(Andor3_ns::Andor3Class::init("Andor3"));
-#endif
-
-#ifdef VIEWORKSVP_ENABLED
-    add_class(VieworksVP_ns::Andor3Class::init("VieworksVP"));
-#endif
-
 #ifdef HAMAMATSU_ENABLED
     add_class(Hamamatsu_ns::HamamatsuClass::init("Hamamatsu"));
 #endif
@@ -202,5 +222,43 @@ void Tango::DServer::class_factory()
 #ifdef ROICOUNTERS_ENABLED    
     add_class(RoiCounters_ns::RoiCountersClass::init("RoiCounters"));
 #endif	
+
+#ifdef MASK_ENABLED    
+    add_class(Mask_ns::MaskClass::init("Mask"));
+#endif
+
+#ifdef SLSJUNGFRAU_ENABLED        
+    add_class(SlsJungfrau_ns::SlsJungfrauClass::init("SlsJungfrau"));
+#endif	
+
+#ifdef SLSEIGER_ENABLED        
+    add_class(SlsEiger_ns::SlsEigerClass::init("SlsEiger"));
+#endif	
+
+#ifdef LAMBDA_ENABLED        
+    add_class(Lambda_ns::LambdaClass::init("Lambda"));
+#endif	
+
+#ifdef UVIEW_ENABLED        
+    add_class(UviewCCD_ns::UviewCCDClass::init("UviewCCD"));
+#endif
+
+#ifdef DHYANA_ENABLED        
+    add_class(Dhyana_ns::DhyanaClass::init("Dhyana"));
+#endif
+
+#ifdef DHYANA6060_ENABLED        
+    add_class(Dhyana6060_ns::Dhyana6060Class::init("Dhyana6060"));
+#endif
+	
+#ifdef UFXC_ENABLED        
+    add_class(Ufxc_ns::UfxcClass::init("Ufxc"));
+#endif
+
+#ifdef SPECTRALINSTRUMENT_ENABLED  
+    add_class(SpectralInstrument_ns::SpectralInstrumentClass::init("SpectralInstrument"));
+#endif
+
+	
 }
 

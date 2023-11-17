@@ -45,6 +45,132 @@ namespace Hamamatsu_ns
 {//=====================================
 //	Define classes for attributes
 //=====================================
+class channel3KindAttrib: public Tango::Attr
+{
+public:
+	channel3KindAttrib():Attr("channel3Kind", Tango::DEV_USHORT, Tango::READ_WRITE) {};
+	~channel3KindAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_channel3Kind(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_channel3Kind(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_channel3Kind_allowed(ty);}
+};
+
+class channel2KindAttrib: public Tango::Attr
+{
+public:
+	channel2KindAttrib():Attr("channel2Kind", Tango::DEV_USHORT, Tango::READ_WRITE) {};
+	~channel2KindAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_channel2Kind(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_channel2Kind(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_channel2Kind_allowed(ty);}
+};
+
+class channel1KindAttrib: public Tango::Attr
+{
+public:
+	channel1KindAttrib():Attr("channel1Kind", Tango::DEV_USHORT, Tango::READ_WRITE) {};
+	~channel1KindAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_channel1Kind(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_channel1Kind(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_channel1Kind_allowed(ty);}
+};
+
+class channel3PolarityAttrib: public Tango::Attr
+{
+public:
+	channel3PolarityAttrib():Attr("channel3Polarity", Tango::DEV_USHORT, Tango::READ_WRITE) {};
+	~channel3PolarityAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_channel3Polarity(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_channel3Polarity(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_channel3Polarity_allowed(ty);}
+};
+
+class channel2PolarityAttrib: public Tango::Attr
+{
+public:
+	channel2PolarityAttrib():Attr("channel2Polarity", Tango::DEV_USHORT, Tango::READ_WRITE) {};
+	~channel2PolarityAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_channel2Polarity(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_channel2Polarity(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_channel2Polarity_allowed(ty);}
+};
+
+class channel1PolarityAttrib: public Tango::Attr
+{
+public:
+	channel1PolarityAttrib():Attr("channel1Polarity", Tango::DEV_USHORT, Tango::READ_WRITE) {};
+	~channel1PolarityAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_channel1Polarity(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_channel1Polarity(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_channel1Polarity_allowed(ty);}
+};
+
+class bottomViewExposureTimeAttrib: public Tango::Attr
+{
+public:
+	bottomViewExposureTimeAttrib():Attr("bottomViewExposureTime", Tango::DEV_DOUBLE, Tango::READ_WRITE) {};
+	~bottomViewExposureTimeAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_bottomViewExposureTime(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_bottomViewExposureTime(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_bottomViewExposureTime_allowed(ty);}
+};
+
+class topViewExposureTimeAttrib: public Tango::Attr
+{
+public:
+	topViewExposureTimeAttrib():Attr("topViewExposureTime", Tango::DEV_DOUBLE, Tango::READ_WRITE) {};
+	~topViewExposureTimeAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_topViewExposureTime(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_topViewExposureTime(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_topViewExposureTime_allowed(ty);}
+};
+
+class wViewEnabledAttrib: public Tango::Attr
+{
+public:
+	wViewEnabledAttrib():Attr("wViewEnabled", Tango::DEV_BOOLEAN, Tango::READ_WRITE) {};
+	~wViewEnabledAttrib() {};
+	
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+	{(static_cast<Hamamatsu *>(dev))->read_wViewEnabled(att);}
+	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
+	{(static_cast<Hamamatsu *>(dev))->write_wViewEnabled(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+	{return (static_cast<Hamamatsu *>(dev))->is_wViewEnabled_allowed(ty);}
+};
+
 class fpsAttrib: public Tango::Attr
 {
 public:
@@ -69,23 +195,81 @@ public:
 	{return (static_cast<Hamamatsu *>(dev))->is_lostFrames_allowed(ty);}
 };
 
-class readoutSpeedAttrib: public Tango::Attr
-{
-public:
-	readoutSpeedAttrib():Attr("readoutSpeed", Tango::DEV_STRING, Tango::READ_WRITE) {};
-	~readoutSpeedAttrib() {};
-	
-	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-	{(static_cast<Hamamatsu *>(dev))->read_readoutSpeed(att);}
-	virtual void write(Tango::DeviceImpl *dev,Tango::WAttribute &att)
-	{(static_cast<Hamamatsu *>(dev))->write_readoutSpeed(att);}
-	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-	{return (static_cast<Hamamatsu *>(dev))->is_readoutSpeed_allowed(ty);}
-};
-
 //=========================================
 //	Define classes for commands
 //=========================================
+class SetParameterCmd : public Tango::Command
+{
+public:
+	SetParameterCmd(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	SetParameterCmd(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~SetParameterCmd() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<Hamamatsu *>(dev))->is_SetParameter_allowed(any);}
+};
+
+
+
+class GetParameterCmd : public Tango::Command
+{
+public:
+	GetParameterCmd(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	GetParameterCmd(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~GetParameterCmd() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<Hamamatsu *>(dev))->is_GetParameter_allowed(any);}
+};
+
+
+
+class GetAllParametersCmd : public Tango::Command
+{
+public:
+	GetAllParametersCmd(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	GetAllParametersCmd(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~GetAllParametersCmd() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<Hamamatsu *>(dev))->is_GetAllParameters_allowed(any);}
+};
+
+
+
 //
 // The HamamatsuClass singleton definition
 //

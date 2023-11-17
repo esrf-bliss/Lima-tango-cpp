@@ -33,14 +33,6 @@
 #ifndef _PCO_H
 #define _PCO_H
 
-
-/**
- * @author	$Author:  $
- * @version	$Revision:  $
- */
-
-//	Add your own constant definitions here.
-//-----------------------------------------------
 #include "tango.h"
 #include "Factory.h"
 
@@ -49,9 +41,30 @@
 #include "lima/CtAcquisition.h"
 #include "lima/CtImage.h"
 #include <PcoInterface.h>
+
+// YAT / 4Tango
 #include <yat/utils/String.h>
+#include <yat/utils/StringTokenizer.h>
+#include <yat/utils/Logging.h>
+#include <yat4tango/PropertyHelper.h>
+#include <yat4tango/ExceptionHelper.h>
+#include <yat4tango/DynamicInterfaceManager.h>
+#include <yat4tango/InnerAppender.h>
+
+/**
+ * @author	$Author:  $
+ * @version	$Revision:  $
+ */
+
+//	Add your own constant definitions here.
+//-----------------------------------------------
 
 #define MAX_ATTRIBUTE_STRING_LENGTH     256
+const bool  NOT_MEMORIZED               = false;
+const bool  NOT_WRITE_MEMORIZED_AT_INIT = false;
+const bool  MEMORIZED                   = true;
+const bool  WRITE_MEMORIZED_AT_INIT     = true;
+
 
 
 namespace Pco_ns
@@ -76,7 +89,22 @@ namespace Pco_ns
     public:
         //	Add your own data members here
         //-----------------------------------------
-
+        //- Used for dynamic attributes
+        Tango::DevULong     *attr_maxNbImage_read;
+        Tango::DevBoolean   *attr_cdiMode_read;
+        Tango::DevBoolean   attr_cdiMode_write;
+        Tango::DevDouble    *attr_frameRate_read;
+        Tango::DevShort     *attr_coolingSetPoint_read;
+        Tango::DevShort     attr_coolingSetPoint_write;
+        Tango::DevString    *attr_adcOperation_read;
+        Tango::DevString    attr_adcOperation_write;
+        Tango::DevString    *attr_shutterMode_read;
+        Tango::DevString    attr_shutterMode_write;
+        Tango::DevBoolean   *attr_doubleImage_read;
+        Tango::DevBoolean   attr_doubleImage_write;
+        Tango::DevULong     *attr_currentRecordedFrame_read;
+        Tango::DevBoolean   *attr_forcedFIFOMode_read;
+        Tango::DevBoolean   attr_forcedFIFOMode_write;
 
         //	Here is the Start of the automatic code generation part
         //-------------------------------------------------------------	
@@ -85,12 +113,11 @@ namespace Pco_ns
          *	Attribute member data.
          */
         //@{
-		Tango::DevString	*attr_shutterMode_read;
-		Tango::DevString	attr_shutterMode_write;
-		Tango::DevString	*attr_pixelScanRate_read;
-		Tango::DevString	attr_pixelScanRate_write;
-		Tango::DevDouble	*attr_frameRate_read;
-		Tango::DevShort	*attr_maxNbImage_read;
+		Tango::DevString	*attr_pixelRate_read;
+		Tango::DevString	attr_pixelRate_write;
+		Tango::DevString	*attr_cameraModel_read;
+		Tango::DevFloat	*attr_sensorTemperature_read;
+		Tango::DevString	*attr_dllVersion_read;
 //@}
 
         /**
@@ -98,6 +125,10 @@ namespace Pco_ns
          * Device properties member data.
          */
         //@{
+/**
+ *	Serial Number of the camera: used to select camera if several connected to the same host
+ */
+	string	serialNumber;
 //@}
 
         /**
@@ -175,45 +206,41 @@ namespace Pco_ns
  */
 	virtual void read_attr_hardware(vector<long> &attr_list);
 /**
- *	Extract real attribute values for shutterMode acquisition result.
+ *	Extract real attribute values for pixelRate acquisition result.
  */
-	virtual void read_shutterMode(Tango::Attribute &attr);
+	virtual void read_pixelRate(Tango::Attribute &attr);
 /**
- *	Write shutterMode attribute values to hardware.
+ *	Write pixelRate attribute values to hardware.
  */
-	virtual void write_shutterMode(Tango::WAttribute &attr);
+	virtual void write_pixelRate(Tango::WAttribute &attr);
 /**
- *	Extract real attribute values for pixelScanRate acquisition result.
+ *	Extract real attribute values for cameraModel acquisition result.
  */
-	virtual void read_pixelScanRate(Tango::Attribute &attr);
+	virtual void read_cameraModel(Tango::Attribute &attr);
 /**
- *	Write pixelScanRate attribute values to hardware.
+ *	Extract real attribute values for sensorTemperature acquisition result.
  */
-	virtual void write_pixelScanRate(Tango::WAttribute &attr);
+	virtual void read_sensorTemperature(Tango::Attribute &attr);
 /**
- *	Extract real attribute values for frameRate acquisition result.
+ *	Extract real attribute values for dllVersion acquisition result.
  */
-	virtual void read_frameRate(Tango::Attribute &attr);
+	virtual void read_dllVersion(Tango::Attribute &attr);
 /**
- *	Extract real attribute values for maxNbImage acquisition result.
+ *	Read/Write allowed for pixelRate attribute.
  */
-	virtual void read_maxNbImage(Tango::Attribute &attr);
+	virtual bool is_pixelRate_allowed(Tango::AttReqType type);
 /**
- *	Read/Write allowed for shutterMode attribute.
+ *	Read/Write allowed for cameraModel attribute.
  */
-	virtual bool is_shutterMode_allowed(Tango::AttReqType type);
+	virtual bool is_cameraModel_allowed(Tango::AttReqType type);
 /**
- *	Read/Write allowed for pixelScanRate attribute.
+ *	Read/Write allowed for sensorTemperature attribute.
  */
-	virtual bool is_pixelScanRate_allowed(Tango::AttReqType type);
+	virtual bool is_sensorTemperature_allowed(Tango::AttReqType type);
 /**
- *	Read/Write allowed for frameRate attribute.
+ *	Read/Write allowed for dllVersion attribute.
  */
-	virtual bool is_frameRate_allowed(Tango::AttReqType type);
-/**
- *	Read/Write allowed for maxNbImage attribute.
- */
-	virtual bool is_maxNbImage_allowed(Tango::AttReqType type);
+	virtual bool is_dllVersion_allowed(Tango::AttReqType type);
 /**
  *	Execution allowed for Talk command.
  */
@@ -223,24 +250,22 @@ namespace Pco_ns
  */
 	virtual bool is_GetCamInfo_allowed(const CORBA::Any &any);
 /**
- *	Execution allowed for GetCamType command.
+ * This command gets the device state (stored in its <i>device_state</i> data member) and returns it to the caller.
+ *	@return	State Code
+ *	@exception DevFailed
  */
-	virtual bool is_GetCamType_allowed(const CORBA::Any &any);
+	virtual Tango::DevState	dev_state();
 /**
- *	Execution allowed for GetInfo command.
- */
-	virtual bool is_GetInfo_allowed(const CORBA::Any &any);
-/**
- * Availables values are:
- *	lasterror
- *	camInfo
- *	camType
- *	clTransferParam
- *	cocRunTime
- *	frameRate
- *	maxNbImages
- *	timestamp
- *	" "
+ * Availables values are:<br>
+ *	lasterror<br>
+ *	camInfo<br>
+ *	camType<br>
+ *	clTransferParam<br>
+ *	cocRunTime<br>
+ *	frameRate<br>
+ *	maxNbImages<br>
+ *	timestamp<br>
+ *	" "<br>
  *	@param	argin	str argin
  *	@return	str argout
  *	@exception DevFailed
@@ -252,18 +277,6 @@ namespace Pco_ns
  *	@exception DevFailed
  */
 	Tango::DevString	get_cam_info();
-/**
- * Get Camera Type
- *	@return	cam type
- *	@exception DevFailed
- */
-	Tango::DevString	get_cam_type();
-/**
- * Get Infos
- *	@return	infos
- *	@exception DevFailed
- */
-	Tango::DevString	get_info();
 
 /**
  *	Read the device properties from database
@@ -273,31 +286,66 @@ namespace Pco_ns
 
         //	Here is the end of the automatic code generation part
         //-------------------------------------------------------------	
-        // return true if the device is correctly initialized in init_device
-
-        bool is_device_initialized()
-        {
-            return m_is_device_initialized;
-        };
-
-
 
 
     protected:
         //	Add your own data members here
         //-----------------------------------------
 
-        //- Store the values into the property
-        //- Properties stuff    
-        int find_index_from_property_name(Tango::DbData& dev_prop, string property_name);
-        template <class T>
-        void create_property_if_empty(Tango::DbData& dev_prop, T value, string property_name);
-        template <class T>
-        void set_property(string property_name, T value);
-        template <class T>
-        T get_property(string property_name);
+        std::string m_camera_model, m_dll_version;
 
+        ///generic method to create a tango dynamic attribute
+        void create_dynamic_interface();
+        void create_pco_with_ram_dynamic_interface();
+        void create_pco_edge_dynamic_interface();
+        void create_pco_dimax_dynamic_interface();
+        void create_pco_xx00_dynamic_interface();
+        template <class F1, class F2>
+        void create_attribute(std::string name,
+            int data_type,
+            Tango::AttrDataFormat data_format,
+            Tango::AttrWriteType access_type,
+            Tango::DispLevel disp_level,
+            const std::string& unit,
+            const std::string& format,
+            const std::string& desc,
+            const std::string& label,
+            /*bool memorized,
+            bool write_memorized_value_at_init,*/
+            F1 read_callback,
+            F2 write_callback);
+
+        //- maxNbImage
+        void read_maxNbImage_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        //- cdi
+        void read_cdiMode_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        void write_cdiMode_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd);
+        //bool is_cdiMode_allowed(Tango::AttReqType type);
+        //- frameRate
+        void read_frameRate_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        //- coolingSetPoint
+        void read_coolingSetPoint_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        void write_coolingSetPoint_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd);
+        //- adcOperation
+        void read_adcOperation_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        void write_adcOperation_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd);
+        //- shutterMode
+        void read_shutterMode_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        void write_shutterMode_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd);        
+        // method for tango dyn attributes WHEN no write part is available - NULL
+        void write_callback_null(yat4tango::DynamicAttributeWriteCallbackData& cbd){/*nop*/}
+        //- doubleImage
+        void read_doubleImage_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        void write_doubleImage_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd);
+        //- currentRecordedFrame
+        void read_currentRecordedFrame_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        //- forcedFIFOMode
+        void read_forcedFIFOMode_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+        void write_forcedFIFOMode_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd);
+        
         //state & status stuff
+        // return true if the device is correctly initialized in init_device
+        bool                    is_device_initialized() {return m_is_device_initialized;};
         bool                    m_is_device_initialized;
         stringstream            m_status_message;
         //lima OBJECTS
@@ -307,9 +355,18 @@ namespace Pco_ns
 
         std::string             m_pixel_scan_rate; //pixel scan rate 	(SLOW, FAST)
         std::string             m_shutter_mode; //shutter mode name 	(GLOBAL, ROLLING)
-        Tango::DevString        dev_string_val;
+        Tango::DevString        m_dev_string_val;
+        map<string, long>       m_map_scan_rate_frequencies;
+
+        //- yat4tango Dynamic Interface Manager
+        yat4tango::DynamicInterfaceManager m_dim;
     };
 
 } // namespace_ns
+
+///////////////////////////////////////////////////////////////////////////////
+//// INCLUDE TEMPLATE IMPLEMENTAION
+///////////////////////////////////////////////////////////////////////////////    
+#include "Pco.hpp"
 
 #endif	// _PCO_H

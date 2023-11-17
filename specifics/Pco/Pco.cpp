@@ -51,8 +51,6 @@ static const char *RcsId = "$Id:  $";
 //  Status      |  dev_status()
 //  Talk        |  talk()
 //  GetCamInfo  |  get_cam_info()
-//  GetCamType  |  get_cam_type()
-//  GetInfo     |  get_info()
 //
 //===================================================================
 #include <tango.h>
@@ -75,22 +73,20 @@ namespace Pco_ns
 //      - s : Device name 
 //
 //-----------------------------------------------------------------------------
-Pco::Pco(Tango::DeviceClass *cl,string &s)
-:Tango::Device_4Impl(cl,s.c_str())
+Pco::Pco(Tango::DeviceClass *cl, string &s)
+    :Tango::Device_4Impl(cl, s.c_str()), m_dim(this)
 {
-	init_device();
+    init_device();
 }
-
-Pco::Pco(Tango::DeviceClass *cl,const char *s)
-:Tango::Device_4Impl(cl,s)
+Pco::Pco(Tango::DeviceClass *cl, const char *s)
+    : Tango::Device_4Impl(cl, s), m_dim(this)
 {
-	init_device();
+    init_device();
 }
-
-Pco::Pco(Tango::DeviceClass *cl,const char *s,const char *d)
-:Tango::Device_4Impl(cl,s,d)
+Pco::Pco(Tango::DeviceClass *cl, const char *s, const char *d)
+    : Tango::Device_4Impl(cl, s, d), m_dim(this)
 {
-	init_device();
+    init_device();
 }
 //+----------------------------------------------------------------------------
 //
@@ -101,21 +97,38 @@ Pco::Pco(Tango::DeviceClass *cl,const char *s,const char *d)
 //-----------------------------------------------------------------------------
 void Pco::delete_device()
 {
-	//	Delete device allocated objects
-    DELETE_DEVSTRING_ATTRIBUTE(attr_shutterMode_read);
-    DELETE_DEVSTRING_ATTRIBUTE(attr_pixelScanRate_read);	
-    DELETE_SCALAR_ATTRIBUTE(attr_frameRate_read);
-    DELETE_SCALAR_ATTRIBUTE(attr_maxNbImage_read);
+    INFO_STREAM << "Pco::Pco() delete device " << device_name << endl;
+    //	Delete device allocated objects
 
-    if(dev_string_val)
-        delete dev_string_val;
+    DELETE_DEVSTRING_ATTRIBUTE(attr_pixelRate_read);
+    DELETE_SCALAR_ATTRIBUTE(attr_currentRecordedFrame_read);
+    DELETE_DEVSTRING_ATTRIBUTE(attr_cameraModel_read);
+    DELETE_DEVSTRING_ATTRIBUTE(attr_dllVersion_read);
+    DELETE_SCALAR_ATTRIBUTE(attr_sensorTemperature_read);
+
+    //- For dyn attr
+    DELETE_SCALAR_ATTRIBUTE(attr_maxNbImage_read);
+    DELETE_SCALAR_ATTRIBUTE(attr_cdiMode_read);
+    DELETE_SCALAR_ATTRIBUTE(attr_frameRate_read);
+    DELETE_SCALAR_ATTRIBUTE(attr_coolingSetPoint_read);
+    DELETE_SCALAR_ATTRIBUTE(attr_adcOperation_read);
+    DELETE_DEVSTRING_ATTRIBUTE(attr_shutterMode_read);
+    DELETE_SCALAR_ATTRIBUTE(attr_doubleImage_read);
+    DELETE_SCALAR_ATTRIBUTE(attr_forcedFIFOMode_read);
+
+    INFO_STREAM << "Remove the inner-appender." << endl;
+    yat4tango::InnerAppender::release(this);
 
     //!!!! ONLY LimaDetector device can do this !!!!
     //if(m_ct!=0)
     //{
-    //    ControlFactory::instance().reset("PrincetonCCD");
+    //    ControlFactory::instance().reset("Pco");
     //    m_ct = 0;
     //}
+
+    //remove attributes from dam
+    INFO_STREAM << "Remove dynamic attributes." << endl;
+    m_dim.remove();
 }
 
 //+----------------------------------------------------------------------------
@@ -127,54 +140,506 @@ void Pco::delete_device()
 //-----------------------------------------------------------------------------
 void Pco::init_device()
 {
-	INFO_STREAM << "Pco::Pco() create device " << device_name << endl;
+    INFO_STREAM << "Pco::Pco() create device " << device_name << endl;
 
-	// Initialise variables to default values
-	//--------------------------------------------
+    // Initialise variables to default values
+    //--------------------------------------------
+    get_device_property();
 
-    CREATE_DEVSTRING_ATTRIBUTE(attr_shutterMode_read,MAX_ATTRIBUTE_STRING_LENGTH);	
-    CREATE_DEVSTRING_ATTRIBUTE(attr_pixelScanRate_read,MAX_ATTRIBUTE_STRING_LENGTH);	
+    CREATE_DEVSTRING_ATTRIBUTE(attr_pixelRate_read, MAX_ATTRIBUTE_STRING_LENGTH);
+    CREATE_SCALAR_ATTRIBUTE(attr_currentRecordedFrame_read);
+    CREATE_DEVSTRING_ATTRIBUTE(attr_cameraModel_read, MAX_ATTRIBUTE_STRING_LENGTH);
+    CREATE_DEVSTRING_ATTRIBUTE(attr_dllVersion_read, MAX_ATTRIBUTE_STRING_LENGTH);
+    CREATE_SCALAR_ATTRIBUTE(attr_sensorTemperature_read);
+    
+    //- For dyn attr
+    CREATE_SCALAR_ATTRIBUTE(attr_maxNbImage_read); 
+    CREATE_SCALAR_ATTRIBUTE(attr_cdiMode_read);
     CREATE_SCALAR_ATTRIBUTE(attr_frameRate_read);
-    CREATE_SCALAR_ATTRIBUTE(attr_maxNbImage_read);
-
-    dev_string_val = new char[MAX_ATTRIBUTE_STRING_LENGTH];
+    CREATE_SCALAR_ATTRIBUTE(attr_coolingSetPoint_read);
+    CREATE_DEVSTRING_ATTRIBUTE(attr_adcOperation_read, MAX_ATTRIBUTE_STRING_LENGTH);
+    CREATE_DEVSTRING_ATTRIBUTE(attr_shutterMode_read, MAX_ATTRIBUTE_STRING_LENGTH);
+    CREATE_SCALAR_ATTRIBUTE(attr_doubleImage_read);
+    CREATE_SCALAR_ATTRIBUTE(attr_forcedFIFOMode_read);
 
     m_is_device_initialized = false;
+    strcpy(*attr_pixelRate_read, "Not Initialised");
+    m_camera_model = "Not Initialised";
+    m_dll_version = "Not Initialised";
     set_state(Tango::INIT);
     m_status_message.str("");
 
+    INFO_STREAM << "Create the inner-appender in order to manage logs." << endl;  
+    yat4tango::InnerAppender::initialize(this, 512);
+
     try
     {
+        //- initialize Lima camera
         //- get the main object used to pilot the lima framework
         m_ct = ControlFactory::instance().get_control("Pco");
-        
-        //- get interface to specific camera
-		m_hw = dynamic_cast<lima::Pco::Interface*>(m_ct->hwInterface());
 
-		//- get camera to specific detector
-		m_camera = (m_hw->getCamera());
+        //- get interface to specific camera
+        m_hw = dynamic_cast<lima::Pco::Interface*>(m_ct->hwInterface());
+
+        //- get camera to specific detector
+        m_camera = (m_hw->getCamera());
+
+        //- 
+        m_camera->getCameraNameBase(m_camera_model);
+        INFO_STREAM << "Camera model : " << m_camera_model << endl;
+        //- 
+        m_camera->getSdkRelease(m_dll_version);
+        INFO_STREAM << "DLL version : " << m_dll_version << endl;
+
+        //- Create dynamic interface
+        create_dynamic_interface();
+
+        INFO_STREAM << "Write tango hardware at Init - pixelRate." << endl;
+        Tango::WAttribute &pixelRate = dev_attr->get_w_attr_by_name("pixelRate");
+        try
+        {
+            std::string pixel_rate_str = yat4tango::PropertyHelper::get_memorized_attribute<std::string>(this, "pixelRate");
+            attr_pixelRate_write = const_cast<Tango::DevString>(pixel_rate_str.c_str());
+            pixelRate.set_write_value(attr_pixelRate_write);
+            write_pixelRate(pixelRate);
+        }
+        catch(Tango::DevFailed&) 
+        {
+            ERROR_STREAM << "Failed to write memorized attribute - pixelRate." << endl;
+        }
+        
     }
-    catch(Exception& e)
+    catch(lima::Exception& e)
     {
-        INFO_STREAM<<"Initialization Failed : "<<e.getErrMsg()<<endl;
-        m_status_message <<"Initialization Failed : "<<e.getErrMsg( )<< endl;
-        m_is_device_initialized = false;
-        set_state(Tango::FAULT);
+        m_status_message << "Initialization Failed : " << e.getErrMsg() << endl;
+        ERROR_STREAM << m_status_message.str() << endl;
+        return;
+    }
+    catch (yat::Exception& ex)
+    {
+        m_status_message << "Initialization Failed : " << ex.errors[0].desc << endl;
+        ERROR_STREAM << m_status_message.str() << endl;
+        return;
+    }
+    catch (Tango::DevFailed& df)
+    {
+        m_status_message << "Initialization Failed : " << df.errors[0].desc << endl;
+        ERROR_STREAM << m_status_message.str() << endl;
         return;
     }
     catch(...)
     {
-        INFO_STREAM<<"Initialization Failed : UNKNOWN"<<endl;
-        m_status_message <<"Initialization Failed : UNKNOWN"<< endl;
-        set_state(Tango::FAULT);
-        m_is_device_initialized = false;
+        m_status_message << "Initialization Failed : Unknown error" << endl;
+        ERROR_STREAM << m_status_message.str() << endl;
         return;
     }
-		
-	m_is_device_initialized = true;		
-    set_state(Tango::STANDBY);
-    this->dev_state();
 
+    m_is_device_initialized = true;
+    dev_state();
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		Pco::get_device_property()
+// 
+// description : 	Read the device properties from database.
+//
+//-----------------------------------------------------------------------------
+void Pco::get_device_property()
+{
+    //	Initialize your default values here (if not done with  POGO).
+    //------------------------------------------------------------------
+
+    //	Read device properties from database.(Automatic code generation)
+    //------------------------------------------------------------------
+	Tango::DbData	dev_prop;
+	dev_prop.push_back(Tango::DbDatum("SerialNumber"));
+
+	//	Call database and extract values
+	//--------------------------------------------
+	if (Tango::Util::instance()->_UseDb==true)
+		get_db_device()->get_property(dev_prop);
+	Tango::DbDatum	def_prop, cl_prop;
+	PcoClass	*ds_class =
+		(static_cast<PcoClass *>(get_device_class()));
+	int	i = -1;
+
+	//	Try to initialize SerialNumber from class property
+	cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+	if (cl_prop.is_empty()==false)	cl_prop  >>  serialNumber;
+	else {
+		//	Try to initialize SerialNumber from default device value
+		def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+		if (def_prop.is_empty()==false)	def_prop  >>  serialNumber;
+	}
+	//	And try to extract SerialNumber value from database
+	if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  serialNumber;
+
+
+
+    //	End of Automatic code generation
+    //------------------------------------------------------------------
+
+    yat4tango::PropertyHelper::create_property_if_empty(this, dev_prop, "0", "SerialNumber");
+
+}
+
+/*-------------------------------------------------------------------------
+//       Pco::create_dynamic_interface
+/-------------------------------------------------------------------------*/
+void Pco::create_dynamic_interface()
+{
+    DEBUG_STREAM << "Pco::create_dynamic_interface(): entering... !" << endl;
+    try
+    {
+        if (m_camera_model.find("pco.edge") != string::npos) 
+        {
+            create_pco_edge_dynamic_interface();
+        }
+        else //- Not EDGE
+        {
+            // ie: either dimax or XX00
+            create_pco_with_ram_dynamic_interface();
+
+            if (m_camera_model.find("pco.dimax") != string::npos)
+            {
+                create_pco_dimax_dynamic_interface();
+            }
+            else if ((m_camera_model.find("pco.4000") != string::npos) ||
+                    (m_camera_model.find("pco.2000") != string::npos) ||
+                    (m_camera_model.find("pco.1600") != string::npos))
+            {
+                create_pco_xx00_dynamic_interface();
+            }
+        }
+    }
+    catch (yat::Exception& ex)
+    {
+        THROW_YAT_TO_TANGO_EXCEPTION(ex);
+    }
+    catch (Tango::DevFailed& df)
+    {
+        ERROR_STREAM << df << endl;
+
+        //- rethrow exception
+        Tango::Except::re_throw_exception(df,
+                                        "TANGO_DEVICE_ERROR",
+                                        string(df.errors[0].desc).c_str(),
+                                        "Pco::create_dynamic_interface()");
+    }
+}
+
+/*-------------------------------------------------------------------------
+//       Pco::create_pco_edge_dynamic_interface
+/-------------------------------------------------------------------------*/
+void Pco::create_pco_edge_dynamic_interface()
+{
+    Tango::DbData dev_prop;
+
+    //create frameRate dyn attribute
+    create_attribute("frameRate",
+        Tango::DEV_DOUBLE,
+        Tango::SCALAR,
+        Tango::READ,
+        Tango::OPERATOR,
+        "fps",
+        "%d",
+        "The frame rate",
+        "Frame Rate",
+        /*NOT_MEMORIZED,
+        NOT_WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_frameRate_callback,
+        &Pco::write_callback_null);
+
+    //create coolingSetPoint dyn attribute
+    create_attribute("coolingSetPoint",
+        Tango::DEV_SHORT,
+        Tango::SCALAR,
+        Tango::READ_WRITE,
+        Tango::OPERATOR,
+        "deg C",
+        "%d",
+        "set / get the cooling set point",
+        "Cooling Set Point",
+        /*MEMORIZED,
+        WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_coolingSetPoint_callback,
+        &Pco::write_coolingSetPoint_callback);
+
+    INFO_STREAM << "Write tango hardware at Init - coolingSetPoint." << endl;
+    Tango::WAttribute &coolingSetPoint = dev_attr->get_w_attr_by_name("coolingSetPoint");
+    dev_prop.push_back(Tango::DbDatum("__MemorizedCoolingSetPoint"));
+    get_db_device()->get_property(dev_prop);
+    if (!dev_prop[0].is_empty())
+    {
+        attr_coolingSetPoint_write = yat4tango::PropertyHelper::get_property<Tango::DevShort>(this, "__MemorizedCoolingSetPoint");
+        coolingSetPoint.set_write_value(attr_coolingSetPoint_write);
+        yat4tango::DynamicAttributeWriteCallbackData cbd_coolingSetPoint;
+        cbd_coolingSetPoint.tga = &coolingSetPoint;
+        write_coolingSetPoint_callback(cbd_coolingSetPoint);
+    }
+    dev_prop.clear();
+
+    //create shutterMode dyn attribute
+    create_attribute("shutterMode",
+        Tango::DEV_STRING,
+        Tango::SCALAR,
+        Tango::READ_WRITE,
+        Tango::OPERATOR,
+        " ",
+        " ",
+        "get / set the shutterMode operation: \nROLLING_SHUTTER\nGLOBAL_SHUTTER\nGLOBAL_RESET",
+        "Shutter Mode",
+        /*MEMORIZED,
+        WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_shutterMode_callback,
+        &Pco::write_shutterMode_callback);
+
+    INFO_STREAM << "Write tango hardware at Init - shutterMode." << endl;
+    Tango::WAttribute &shutterMode = dev_attr->get_w_attr_by_name("shutterMode");
+    dev_prop.push_back(Tango::DbDatum("__MemorizedShutterMode"));
+    get_db_device()->get_property(dev_prop);
+    if (!dev_prop[0].is_empty())
+    {
+        std::string shutter_mode_str = yat4tango::PropertyHelper::get_property<std::string>(this, "__MemorizedShutterMode");
+        attr_shutterMode_write = const_cast<Tango::DevString>(shutter_mode_str.c_str());
+        shutterMode.set_write_value(attr_shutterMode_write);
+        yat4tango::DynamicAttributeWriteCallbackData cbd_shutterMode;
+        cbd_shutterMode.tga = &shutterMode;
+        write_shutterMode_callback(cbd_shutterMode);
+    }
+    dev_prop.clear();
+}
+
+/*-------------------------------------------------------------------------
+//       Pco::create_pco_with_ram_dynamic_interface
+/-------------------------------------------------------------------------*/
+void Pco::create_pco_with_ram_dynamic_interface()
+{
+    Tango::DbData dev_prop;
+
+    //create doubleImage dyn attribute
+    create_attribute("doubleImage",
+        Tango::DEV_BOOLEAN,
+        Tango::SCALAR,
+        Tango::READ_WRITE,
+        Tango::OPERATOR,
+        " ",
+        " ",
+        "Set / Get the double image mode",
+        "Double Image",
+        /*MEMORIZED,
+        WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_doubleImage_callback,
+        &Pco::write_doubleImage_callback);
+
+        INFO_STREAM << "Write tango hardware at Init - doubleImage." << endl;
+        Tango::WAttribute &doubleImage = dev_attr->get_w_attr_by_name("doubleImage");
+        dev_prop.push_back(Tango::DbDatum("__MemorizedDoubleImage"));
+        get_db_device()->get_property(dev_prop);
+        if (!dev_prop[0].is_empty())
+        {
+            attr_doubleImage_write = yat4tango::PropertyHelper::get_property<Tango::DevBoolean>(this, "__MemorizedDoubleImage");
+            doubleImage.set_write_value(attr_doubleImage_write);
+            yat4tango::DynamicAttributeWriteCallbackData cbd_doubleImage;
+            cbd_doubleImage.tga = &doubleImage;
+            write_doubleImage_callback(cbd_doubleImage);
+        }
+        dev_prop.clear();
+
+
+    //create currentRecordedFrame dyn attribute
+    create_attribute("currentRecordedFrame",
+        Tango::DEV_ULONG,
+        Tango::SCALAR,
+        Tango::READ,
+        Tango::OPERATOR,
+        " ",
+        "%d",
+        "current recorded frame : frames recorded in the Camera RAM",
+        "Current Recorded Frame",
+        /*NOT_MEMORIZED,
+        NOT_WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_currentRecordedFrame_callback,
+        &Pco::write_callback_null);
+
+    //create forcedFIFOMode dyn attribute
+    create_attribute("forcedFIFOMode",
+        Tango::DEV_BOOLEAN,
+        Tango::SCALAR,
+        Tango::READ_WRITE,
+        Tango::OPERATOR,
+        " ",
+        " ",
+        "Forced FIFO mode",
+        "Forced FIFO mode",
+        /*MEMORIZED,
+        WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_forcedFIFOMode_callback,
+        &Pco::write_forcedFIFOMode_callback);
+
+        INFO_STREAM << "Write tango hardware at Init - forcedFIFOMode." << endl;
+        Tango::WAttribute &forcedFIFOMode = dev_attr->get_w_attr_by_name("forcedFIFOMode");
+        dev_prop.push_back(Tango::DbDatum("__MemorizedforcedFIFOMode"));
+        get_db_device()->get_property(dev_prop);
+        if (!dev_prop[0].is_empty())
+        {
+            attr_forcedFIFOMode_write = yat4tango::PropertyHelper::get_property<Tango::DevBoolean>(this, "__MemorizedforcedFIFOMode");
+            forcedFIFOMode.set_write_value(attr_forcedFIFOMode_write);
+            yat4tango::DynamicAttributeWriteCallbackData cbd_forcedFIFOMode;
+            cbd_forcedFIFOMode.tga = &forcedFIFOMode;
+            write_forcedFIFOMode_callback(cbd_forcedFIFOMode);
+        }
+        dev_prop.clear();
+}
+
+/*-------------------------------------------------------------------------
+//       Pco::create_pco_dimax_dynamic_interface
+/-------------------------------------------------------------------------*/
+void Pco::create_pco_dimax_dynamic_interface()
+{
+    Tango::DbData dev_prop;
+    
+    //create maxNbImage dyn attribute
+    create_attribute("maxNbImage",
+        Tango::DEV_ULONG,
+        Tango::SCALAR,
+        Tango::READ,
+        Tango::OPERATOR,
+        " ",
+        "%d",
+        "get the max number of images available in the Camera RAM",
+        "Max Nb Image",
+        /*NOT_MEMORIZED,
+        NOT_WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_maxNbImage_callback,
+        &Pco::write_callback_null);
+
+    //create cdiMode dyn attribute
+    create_attribute("cdiMode",
+        Tango::DEV_BOOLEAN,
+        Tango::SCALAR,
+        Tango::READ_WRITE,
+        Tango::OPERATOR,
+        " ",
+        "%1d",
+        "enable / disable the cdi mode",
+        "CDI mode",
+        /*MEMORIZED,
+        WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_cdiMode_callback,
+        &Pco::write_cdiMode_callback);
+
+    INFO_STREAM << "Write tango hardware at Init - cdiMode." << endl;
+    Tango::WAttribute &cdiMode = dev_attr->get_w_attr_by_name("cdiMode");
+    dev_prop.push_back(Tango::DbDatum("__MemorizedCdiMode"));
+    get_db_device()->get_property(dev_prop);
+    if (!dev_prop[0].is_empty())
+    {
+        attr_cdiMode_write = yat4tango::PropertyHelper::get_property<Tango::DevShort>(this, "__MemorizedCdiMode");
+        cdiMode.set_write_value(attr_cdiMode_write);
+        yat4tango::DynamicAttributeWriteCallbackData cbd_cdiMode;
+        cbd_cdiMode.tga = &cdiMode;
+        write_cdiMode_callback(cbd_cdiMode);
+    }
+    dev_prop.clear();
+
+    //create frameRate dyn attribute
+    create_attribute("frameRate",
+        Tango::DEV_DOUBLE,
+        Tango::SCALAR,
+        Tango::READ,
+        Tango::OPERATOR,
+        "fps",
+        "%d",
+        "get the frame rate",
+        "Frame Rate",
+        /*NOT_MEMORIZED,
+        NOT_WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_frameRate_callback,
+        &Pco::write_callback_null);
+}
+
+/*-------------------------------------------------------------------------
+//       Pco::create_pco_xx00_dynamic_interface
+/-------------------------------------------------------------------------*/
+void Pco::create_pco_xx00_dynamic_interface()
+{
+    Tango::DbData dev_prop;
+
+    //create maxNbImage dyn attribute
+    create_attribute("maxNbImage",
+        Tango::DEV_ULONG,
+        Tango::SCALAR,
+        Tango::READ,
+        Tango::OPERATOR,
+        " ",
+        "%d",
+        "get the max number of images available in the Camera RAM",
+        "Max Nb Image",
+        /*NOT_MEMORIZED,
+        NOT_WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_maxNbImage_callback,
+        &Pco::write_callback_null);
+
+    //create adcOperation dyn attribute
+    create_attribute("adcOperation",
+        Tango::DEV_STRING,
+        Tango::SCALAR,
+        Tango::READ_WRITE,
+        Tango::OPERATOR,
+        " ",
+        "%1d",
+        "get / set the adc operation: \nSINGLE\nDUAL",
+        "ADC Operation",
+        /*MEMORIZED,
+        WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_adcOperation_callback,
+        &Pco::write_adcOperation_callback);
+
+    INFO_STREAM << "Write tango hardware at Init - adcOperation." << endl;
+    Tango::WAttribute &adcOperation = dev_attr->get_w_attr_by_name("adcOperation");
+    dev_prop.push_back(Tango::DbDatum("__MemorizedAdcOperation"));
+    get_db_device()->get_property(dev_prop);
+    if (!dev_prop[0].is_empty())
+    {
+        std::string adc_op_str = yat4tango::PropertyHelper::get_property<std::string>(this, "__MemorizedAdcOperation");
+        attr_adcOperation_write = const_cast<Tango::DevString>(adc_op_str.c_str());
+        adcOperation.set_write_value(attr_adcOperation_write);
+        yat4tango::DynamicAttributeWriteCallbackData cbd_adcOperation;
+        cbd_adcOperation.tga = &adcOperation;
+        write_adcOperation_callback(cbd_adcOperation);
+    }
+    dev_prop.clear();
+
+    //create coolingSetPoint dyn attribute
+    create_attribute("coolingSetPoint",
+        Tango::DEV_SHORT,
+        Tango::SCALAR,
+        Tango::READ_WRITE,
+        Tango::OPERATOR,
+        "deg C",
+        "%d",
+        "get / set the cooling set point",
+        "Cooling Set Point",
+        /*MEMORIZED,
+        WRITE_MEMORIZED_AT_INIT,*/
+        &Pco::read_coolingSetPoint_callback,
+        &Pco::write_coolingSetPoint_callback);
+
+    INFO_STREAM << "Write tango hardware at Init - coolingSetPoint." << endl;
+    Tango::WAttribute &coolingSetPoint = dev_attr->get_w_attr_by_name("coolingSetPoint");
+    dev_prop.push_back(Tango::DbDatum("__MemorizedCoolingSetPoint"));
+    get_db_device()->get_property(dev_prop);
+    if (!dev_prop[0].is_empty())
+    {
+        attr_coolingSetPoint_write = yat4tango::PropertyHelper::get_property<Tango::DevShort>(this, "__MemorizedCoolingSetPoint");
+        coolingSetPoint.set_write_value(attr_coolingSetPoint_write);
+        yat4tango::DynamicAttributeWriteCallbackData cbd_coolingSetPoint;
+        cbd_coolingSetPoint.tga = &coolingSetPoint;
+        write_coolingSetPoint_callback(cbd_coolingSetPoint);
+    }     
+    dev_prop.clear();
 }
 
 //+----------------------------------------------------------------------------
@@ -187,40 +652,9 @@ void Pco::init_device()
 void Pco::always_executed_hook()
 {
     DEBUG_STREAM << "Pco::always_executed_hook() entering... "<< endl;
-	
-	try
-	{
-		yat::AutoMutex<> _lock(ControlFactory::instance().get_global_mutex());
-		m_status_message.str("");
-		//- get the singleton control objet used to pilot the lima framework
-        m_ct = ControlFactory::instance().get_control("Pco");
-        
-        //- get interface to specific camera
-		m_hw = dynamic_cast<lima::Pco::Interface*>(m_ct->hwInterface());
 
-		//- get camera to specific detector
-		m_camera = (m_hw->getCamera());
-		
-		//- update state
-		dev_state();
-	}
-	catch (Exception& e)
-	{
-		ERROR_STREAM << e.getErrMsg() << endl;
-		m_status_message << "Initialization Failed : " << e.getErrMsg() << endl;
-		//- throw exception
-		set_state(Tango::FAULT);
-		m_is_device_initialized = false;
-		return;
-	}
-	catch (Tango::DevFailed& df)
-	{
-		ERROR_STREAM << df << endl;
-		m_status_message << "Initialization Failed : " << string(df.errors[0].desc) << endl;
-		m_is_device_initialized = false;
-		set_state(Tango::FAULT);
-		return;
-	}	
+    //- update state
+    dev_state();
 }
 //+----------------------------------------------------------------------------
 //
@@ -231,310 +665,725 @@ void Pco::always_executed_hook()
 //-----------------------------------------------------------------------------
 void Pco::read_attr_hardware(vector<long> &attr_list)
 {
-	DEBUG_STREAM << "Pco::read_attr_hardware(vector<long> &attr_list) entering... "<< endl;
-	//	Add your own code here
+    DEBUG_STREAM << "Pco::read_attr_hardware(vector<long> &attr_list) entering... "<< endl;
+    //	Add your own code here
 }
 
 //+----------------------------------------------------------------------------
 //
-// method : 		Pco::read_frameRate
+// method : 		Pco::read_sensorTemperature
 // 
-// description : 	Extract real attribute values for frameRate acquisition result.
+// description : 	Extract real attribute values for sensorTemperature acquisition result.
 //
 //-----------------------------------------------------------------------------
-void Pco::read_frameRate(Tango::Attribute &attr)
+void Pco::read_sensorTemperature(Tango::Attribute &attr)
 {
-	DEBUG_STREAM << "Pco::read_frameRate(Tango::Attribute &attr) entering... "<< endl;
+	DEBUG_STREAM << "Pco::read_sensorTemperature(Tango::Attribute &attr) entering... "<< endl;
 
     try
     {
-        dev_string_val = m_camera->talk("frameRate");
-        *attr_frameRate_read = yat::StringUtil::to_num<Tango::DevDouble>(std::string(dev_string_val));
-        attr.set_value(attr_frameRate_read);
+        std::string temp_temperature_info,temp_temperature;
+        m_camera->getTemperatureInfo(temp_temperature_info);
+        yat::StringUtil::extract_token(&temp_temperature_info, '[', ']', &temp_temperature);
+        *attr_sensorTemperature_read = yat::StringUtil::to_num<float>(temp_temperature);
+        attr.set_value(attr_sensorTemperature_read);
     }
-    catch(Tango::DevFailed& df)
-    {
-        ERROR_STREAM << df << endl;
-        //- rethrow exception
-        Tango::Except::re_throw_exception(df,
-                    static_cast<const char*> ("TANGO_DEVICE_ERROR"),
-                    static_cast<const char*> (string(df.errors[0].desc).c_str()),
-                    static_cast<const char*> ("Pco::read_frameRate"));
-    }			
-    catch(Exception& e)
+    catch (lima::Exception& e)
     {
         ERROR_STREAM << e.getErrMsg() << endl;
         //- throw exception
         Tango::Except::throw_exception(
-                    static_cast<const char*> ("LIMA_ERROR"),
-                    static_cast<const char*> (e.getErrMsg().c_str()),
-                    static_cast<const char*> ("Pco::read_frameRate"));
+                                        "LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::read_sensorTemperature");
     }
 }
 
 //+----------------------------------------------------------------------------
 //
-// method : 		Pco::read_maxNbImage
-// 
-// description : 	Extract real attribute values for maxNbImage acquisition result.
+// method :         Pco::read_maxNbImage_callback()
+//
+// description : Extract real attribute values for maxNbImage
 //
 //-----------------------------------------------------------------------------
-void Pco::read_maxNbImage(Tango::Attribute &attr)
+void Pco::read_maxNbImage_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
 {
-	DEBUG_STREAM << "Pco::read_maxNbImage(Tango::Attribute &attr) entering... "<< endl;
+    DEBUG_STREAM << "Pco::read_maxNbImage_callback()" << endl; //  << cbd.dya->get_name() << endl;
 
     try
     {
-        dev_string_val = m_camera->talk("maxNbImages");
-        *attr_maxNbImage_read = yat::StringUtil::to_num<Tango::DevShort>(std::string(dev_string_val));
-        attr.set_value(attr_maxNbImage_read);
+        m_camera->getMaxNbImages(*attr_maxNbImage_read);
+        cbd.tga->set_value(attr_maxNbImage_read);
     }
-    catch(Tango::DevFailed& df)
-    {
-        ERROR_STREAM << df << endl;
-        //- rethrow exception
-        Tango::Except::re_throw_exception(df,
-                    static_cast<const char*> ("TANGO_DEVICE_ERROR"),
-                    static_cast<const char*> (string(df.errors[0].desc).c_str()),
-                    static_cast<const char*> ("Pco::read_maxNbImage"));
-    }			
-    catch(Exception& e)
+    catch (lima::Exception& e)
     {
         ERROR_STREAM << e.getErrMsg() << endl;
         //- throw exception
         Tango::Except::throw_exception(
-                    static_cast<const char*> ("LIMA_ERROR"),
-                    static_cast<const char*> (e.getErrMsg().c_str()),
-                    static_cast<const char*> ("Pco::read_maxNbImage"));
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::read_maxNbImage_callback");
     }
 }
 
 //+----------------------------------------------------------------------------
 //
-// method : 		Pco::read_shutterMode
+// method :         Pco::read_cdiMode_callback()
+//
+// description : Extract real attribute values for cdi
+//
+//-----------------------------------------------------------------------------
+void Pco::read_cdiMode_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
+{
+    DEBUG_STREAM << "Pco::read_cdiMode_callback()" << endl; //  << cbd.dya->get_name() << endl;
+
+    try
+    {
+        int cdi_mode_temp = -1;
+        m_camera->getCDIMode(cdi_mode_temp);
+        *attr_cdiMode_read = cdi_mode_temp;
+        cbd.tga->set_value(attr_cdiMode_read);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+                                        "LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::read_cdiMode_callback");
+    }
+}
+
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::write_cdiMode_callback()
+//
+// description : Extract real attribute values for cdi
+//
+//-----------------------------------------------------------------------------
+void Pco::write_cdiMode_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd)
+{
+    INFO_STREAM << "Pco::write_cdiMode_callback()" << endl; //  << cbd.dya->get_name() << endl;
+
+    try
+    {
+        cbd.tga->get_write_value(attr_cdiMode_write);
+        m_camera->setCDIMode(attr_cdiMode_write);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+                                        "LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::write_cdiMode_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::read_frameRate_callback()
+//
+// description : Extract real attribute values for frameRate
+//
+//-----------------------------------------------------------------------------
+void Pco::read_frameRate_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
+{
+    DEBUG_STREAM << "Pco::read_frameRate_callback()" << endl; //  << cbd.dya->get_name() << endl;
+
+    try
+    {
+        //- "manual" state machine as this is a dynamic attribute
+        if (get_state() == Tango::DISABLE || get_state() == Tango::FAULT) 
+            return;
+        
+        m_camera->getFrameRate(*attr_frameRate_read);
+
+        cbd.tga->set_value(attr_frameRate_read);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::read_frameRate_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::read_coolingSetPoint_callback()
+//
+// description : Extract real attribute values for coolingSetPoint
+//
+//-----------------------------------------------------------------------------
+void Pco::read_coolingSetPoint_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
+{
+    DEBUG_STREAM << "Pco::read_coolingSetPoint_callback()" << endl; //  << cbd.dya->get_name() << endl;
+
+    try
+    {
+        //- "manual" state machine as this is a dynamic attribute
+        if (get_state() == Tango::DISABLE || get_state() == Tango::FAULT)
+            return;
+       
+        int temp_cooling_set_point = -1;
+        m_camera->getCoolingTemperature(temp_cooling_set_point);
+        *attr_coolingSetPoint_read = temp_cooling_set_point;
+        
+        cbd.tga->set_value(attr_coolingSetPoint_read);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::read_coolingSetPoint_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::write_coolingSetPoint_callback()
+//
+// description : Extract real attribute values for coolingSetPoint
+//
+//-----------------------------------------------------------------------------
+void Pco::write_coolingSetPoint_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd)
+{
+    INFO_STREAM << "Pco::write_coolingSetPoint_callback()" << endl; //  << cbd.dya->get_name() << endl;
+
+        if (get_state() == Tango::FAULT ||
+            get_state() == Tango::RUNNING ||
+            get_state() == Tango::DISABLE)
+        {
+            std::string reason = "It's currently not allowed to write attribute coolingSetPoint. The device state is " + std::string(Tango::DevStateName[get_state()]);
+            Tango::Except::throw_exception( "TANGO_DEVICE_ERROR",
+                                            reason.c_str(),
+                                            "Pco::write_coolingSetPoint_callback()");
+        }
+
+    try
+    {
+        cbd.tga->get_write_value(attr_coolingSetPoint_write);
+        m_camera->setCoolingTemperature(attr_coolingSetPoint_write);
+
+        //- Memorize the value
+        yat4tango::PropertyHelper::set_property(this, "__MemorizedCoolingSetPoint", attr_coolingSetPoint_write);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::write_coolingSetPoint_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::read_adcOperation_callback()
+//
+// description : Extract real attribute values for adcOperation
+//
+//-----------------------------------------------------------------------------
+void Pco::read_adcOperation_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
+{
+    DEBUG_STREAM << "Pco::read_adcOperation_callback()" << endl; //  << cbd.dya->get_name() << endl;
+
+    try
+    {
+        int adc_temp = -1;
+        m_camera->getAdc(adc_temp);
+        switch (adc_temp)
+        {
+            case 1:
+                strcpy(*attr_adcOperation_read, "SINGLE");
+                break;
+            case 2:
+                strcpy(*attr_adcOperation_read, "DUAL");
+                break;
+            default:
+                strcpy(*attr_adcOperation_read, "UNKNOWN");
+                break;
+        }
+
+        cbd.tga->set_value(attr_adcOperation_read);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::read_adcOperation_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::write_adcOperation_callback()
+//
+// description : Extract real attribute values for adcOperation
+//
+//-----------------------------------------------------------------------------
+void Pco::write_adcOperation_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd)
+{
+    INFO_STREAM << "Pco::write_adcOperation_callback()" << endl; //  << cbd.dya->get_name() << endl;
+
+    if (get_state() == Tango::FAULT || get_state() == Tango::RUNNING)
+    {
+        std::string reason = "It's currently not allowed to write attribute adcOperation. The device state is " + std::string(Tango::DevStateName[get_state()]);
+        Tango::Except::throw_exception( "TANGO_DEVICE_ERROR",
+                                        reason.c_str(),
+                                        "Pco::write_adcOperation_callback()");
+    }
+    
+    try
+    {
+        std::string previous = *attr_adcOperation_read;
+        cbd.tga->get_write_value(attr_adcOperation_write);
+        std::string current = attr_adcOperation_write;
+
+        int value_to_write;
+                
+        if(current == "SINGLE")
+            value_to_write = 1;
+        else if(current == "DUAL")
+            value_to_write = 2;
+        else
+            Tango::Except::throw_exception("CONFIGURATION_ERROR",
+                                           "Available ADC values are: \n- SINGLE\n- DUAL" ,
+                                           "Pco::write_adcOperation_callback");
+
+        m_camera->setAdc(value_to_write);
+        //- Memorize the value
+        yat4tango::PropertyHelper::set_property(this, "__MemorizedAdcOperation", static_cast<std::string>(attr_adcOperation_write));
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::write_adcOperation_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		Pco::read_shutterMode_callback
 // 
 // description : 	Extract real attribute values for shutterMode acquisition result.
 //
 //-----------------------------------------------------------------------------
-void Pco::read_shutterMode(Tango::Attribute &attr)
+void Pco::read_shutterMode_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
 {
-	DEBUG_STREAM << "Pco::read_shutterMode(Tango::Attribute &attr) entering... "<< endl;
+    DEBUG_STREAM << "Pco::read_shutterMode_callback(Tango::Attribute &attr) entering... "<< endl;
 
     try
     {
-        *attr_shutterMode_read = m_camera->talk("rollingShutter");
-        //- this return a number as char*: we want to transform it into readable text
-        short rolling_shutter = yat::StringUtil::to_num<short>(std::string(*attr_shutterMode_read));
+        //- "manual" state machine as this is a dynamic attribute
+        if (get_state() == Tango::DISABLE || get_state() == Tango::FAULT)
+            return;
         
-		switch(rolling_shutter)
-		{
-			case -1 : strcpy(*attr_shutterMode_read, "NOT_AVAILABLE_FOR_THIS_CAM");
-			break;
-            case 0 : strcpy(*attr_shutterMode_read, "GLOBAL");
-			break;
-            case 1 : strcpy(*attr_shutterMode_read, "ROLLING");
-			break;
-            default : strcpy(*attr_shutterMode_read, "Not Supported");
-			break;
-		}
+        int shutter_temp = -1;
+        m_camera->getRollingShutter(shutter_temp);
+        switch (shutter_temp)
+        {
+        case 1:
+            strcpy(*attr_shutterMode_read, "ROLLING_SHUTTER");
+            break;
+        case 2:
+            strcpy(*attr_shutterMode_read, "GLOBAL_SHUTTER");
+            break;
+        case 4:
+            strcpy(*attr_shutterMode_read, "GLOBAL_RESET");
+            break;
+        default:
+            strcpy(*attr_shutterMode_read, "UNKNOWN");
+            break;
+        }
 
-        attr.set_value(attr_shutterMode_read);
+        cbd.tga->set_value(attr_shutterMode_read);
     }
-    catch(Tango::DevFailed& df)
-    {
-        ERROR_STREAM << df << endl;
-        //- rethrow exception
-        Tango::Except::re_throw_exception(df,
-                    static_cast<const char*> ("TANGO_DEVICE_ERROR"),
-                    static_cast<const char*> (string(df.errors[0].desc).c_str()),
-                    static_cast<const char*> ("Pco::read_shutterMode"));
-    }			
-    catch(Exception& e)
+    catch (lima::Exception& e)
     {
         ERROR_STREAM << e.getErrMsg() << endl;
         //- throw exception
         Tango::Except::throw_exception(
-                     static_cast<const char*> ("TANGO_DEVICE_ERROR"),
-                     static_cast<const char*> (e.getErrMsg().c_str()),
-                     static_cast<const char*> ("Pco::read_shutterMode"));
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::read_shutterMode_callback");
     }
 }
 
 //+----------------------------------------------------------------------------
 //
-// method : 		Pco::write_shutterMode
+// method : 		Pco::write_shutterMode_callback
 // 
 // description : 	Write shutterMode attribute values to hardware.
 //
 //-----------------------------------------------------------------------------
-void Pco::write_shutterMode(Tango::WAttribute &attr)
+void Pco::write_shutterMode_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd)
 {
-	DEBUG_STREAM << "Pco::write_shutterMode(Tango::WAttribute &attr) entering... "<< endl;
+    INFO_STREAM << "Pco::write_shutterMode_callback(Tango::WAttribute &attr) entering... "<< endl;
+
+        if (get_state() == Tango::FAULT   ||
+            get_state() == Tango::RUNNING ||
+            get_state() == Tango::DISABLE)
+        {
+            std::string reason = "It's currently not allowed to write attribute shutterMode. The device state is " + std::string(Tango::DevStateName[get_state()]);
+            Tango::Except::throw_exception( "TANGO_DEVICE_ERROR",
+                                            reason.c_str(),
+                                            "Pco::write_adcOperation_callback()");
+        }
 
     try
     {
+        
         std::string previous = *attr_shutterMode_read;
-        attr.get_write_value(attr_shutterMode_write);
+        cbd.tga->get_write_value(attr_shutterMode_write);
         std::string current = attr_shutterMode_write;
 
-        /*check user input*/
-        if((current != "NOT_AVAILABLE") && 
-           (current != "GLOBAL")        && 
-           (current != "ROLLING"))
-        {
-            m_shutter_mode = previous;
-            attr_shutterMode_write = new char [m_shutter_mode.size()+1];
-            strcpy (attr_shutterMode_write, m_shutter_mode.c_str());
+        int value_to_write;
 
-            Tango::Except::throw_exception( (const char*) ("CONFIGURATION_ERROR"),
-                                            (const char*) ("Available Shutter Modes are: \n- NOT_AVAILABLE \n- GLOBAL \n- ROLLING"),
-                                            (const char*) ("Pco::write_shutterMode"));
-        }
+        if (current == "ROLLING_SHUTTER")
+            value_to_write = 1;
+        else if (current == "GLOBAL_SHUTTER")
+            value_to_write = 2;
+        else if (current == "GLOBAL_RESET")
+            value_to_write = 4;
+        else
+            Tango::Except::throw_exception( "CONFIGURATION_ERROR",
+                                            "Available Shutter values are: \n- ROLLING_SHUTTER\n- GLOBAL_SHUTTER\n- GLOBAL_RESET",
+                                            "Pco::write_shutterMode_callback");
 
-        std::string value_to_write;
-        //- THIS IS AN AVAILABLE SHUTTER MODE
-        if(current == "NOT_AVAILABLE")
-        {
-			value_to_write = "-1";
-        }
+        m_camera->setRollingShutter(value_to_write);
 
-        if(current == "GLOBAL")
-        {
-			value_to_write = "0";
-        }
-		
-        if(current == "ROLLING")
-        {
-			value_to_write = "1";
-        }
-
-        std::string cmd = "rollingShutter " + value_to_write; 
-        m_camera->talk((char*)cmd.c_str());
+        //- Memorize the value
+        yat4tango::PropertyHelper::set_property(this, "__MemorizedShutterMode", static_cast<std::string>(attr_shutterMode_write));
     }
-    catch(Tango::DevFailed& df)
-    {
-        ERROR_STREAM << df << endl;
-        //- rethrow exception
-        Tango::Except::re_throw_exception(df,
-                    static_cast<const char*> ("TANGO_DEVICE_ERROR"),
-                    static_cast<const char*> (string(df.errors[0].desc).c_str()),
-                    static_cast<const char*> ("Pco::write_shutterMode"));
-    }		
-    catch(Exception& e)
+    catch (lima::Exception& e)
     {
         ERROR_STREAM << e.getErrMsg() << endl;
         //- throw exception
         Tango::Except::throw_exception(
-                    static_cast<const char*> ("LIMA_ERROR"),
-                    static_cast<const char*> (e.getErrMsg().c_str()),
-                    static_cast<const char*> ("Pco::write_shutterMode"));
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::write_shutterMode_callback");
     }
 }
 
 //+----------------------------------------------------------------------------
 //
-// method : 		Pco::read_pixelScanRate
+// method : 		Pco::read_pixelRate
 // 
-// description : 	Extract real attribute values for pixelScanRate acquisition result.
+// description : 	Extract real attribute values for pixelRate acquisition result.
 //
 //-----------------------------------------------------------------------------
-void Pco::read_pixelScanRate(Tango::Attribute &attr)
+void Pco::read_pixelRate(Tango::Attribute &attr)
 {
-	DEBUG_STREAM << "Pco::read_pixelScanRate(Tango::Attribute &attr) entering... "<< endl;
+	DEBUG_STREAM << "Pco::read_pixelRate(Tango::Attribute &attr) entering... "<< endl;
 
     try
     {
-        *attr_pixelScanRate_read = m_camera->talk("pixelRate");
-        //- this return a number as char*: we want to transform it into readable text
-        long pixel_rate = yat::StringUtil::to_num<long>(std::string(*attr_pixelScanRate_read));
-        
-		switch(pixel_rate)
-		{
-            case 95333333 : strcpy(*attr_pixelScanRate_read, "SLOW: 95.3 MHz");
-			break;
-            case 286000000 : strcpy(*attr_pixelScanRate_read, "FAST: 286 MHz");
-			break;
-            default : strcpy(*attr_pixelScanRate_read, "Not Supported");
-			break;
-		}
-
-        attr.set_value(attr_pixelScanRate_read);
+        const char * pixel_rate_str = talk("pixelRate");
+        strcpy(*attr_pixelRate_read, pixel_rate_str);
+        attr.set_value(attr_pixelRate_read);
     }
-    catch(Tango::DevFailed& df)
+    catch (yat::Exception& ex)
     {
-        ERROR_STREAM << df << endl;
-        //- rethrow exception
-        Tango::Except::re_throw_exception(df,
-                    static_cast<const char*> ("TANGO_DEVICE_ERROR"),
-                    static_cast<const char*> (string(df.errors[0].desc).c_str()),
-                    static_cast<const char*> ("Pco::read_pixelScanRate"));
-    }			
-    catch(Exception& e)
+        THROW_YAT_TO_TANGO_EXCEPTION(ex);
+    }
+    catch (lima::Exception& e)
     {
         ERROR_STREAM << e.getErrMsg() << endl;
         //- throw exception
-        Tango::Except::throw_exception(
-                     static_cast<const char*> ("TANGO_DEVICE_ERROR"),
-                     static_cast<const char*> (e.getErrMsg().c_str()),
-                     static_cast<const char*> ("Pco::read_pixelScanRate"));
+        Tango::Except::throw_exception("LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::read_pixelRate");
     }
 }
 
 //+----------------------------------------------------------------------------
 //
-// method : 		Pco::write_pixelScanRate
+// method : 		Pco::write_pixelRate
 // 
-// description : 	Write pixelScanRate attribute values to hardware.
+// description : 	Write pixelRate attribute values to hardware.
 //
 //-----------------------------------------------------------------------------
-void Pco::write_pixelScanRate(Tango::WAttribute &attr)
+void Pco::write_pixelRate(Tango::WAttribute &attr)
 {
-	DEBUG_STREAM << "Pco::write_pixelScanRate(Tango::WAttribute &attr) entering... "<< endl;
+	INFO_STREAM << "Pco::write_pixelRate(Tango::WAttribute &attr) entering... "<< endl;
 
-	try
+    try
     {
-        std::string previous = *attr_pixelScanRate_read;
-        attr.get_write_value(attr_pixelScanRate_write);
-        std::string current = attr_pixelScanRate_write;
+        std::string previous = *attr_pixelRate_read;
+        attr.get_write_value(attr_pixelRate_write);
+        std::string current = attr_pixelRate_write;
 
-        /*check user input*/
-        if((current != "SLOW") && 
-           (current != "FAST"))
+        std::string pixel_rate_valid_values;
+        m_camera->getPixelRateValidValues(pixel_rate_valid_values);
+        if (pixel_rate_valid_values.find(current) == std::string::npos)
         {
-            m_pixel_scan_rate = previous;
-            attr_pixelScanRate_write = new char [m_pixel_scan_rate.size()+1];
-            strcpy (attr_pixelScanRate_write, m_pixel_scan_rate.c_str());
-
-            Tango::Except::throw_exception( (const char*) ("CONFIGURATION_ERROR"),
-                                            (const char*) ("Available Pixel Scan Rate are: \n- SLOW \n- FAST"),
-                                            (const char*) ("Pco::write_pixelScanRate"));
+            Tango::Except::throw_exception( "CONFIGURATION_ERROR",
+                                            "Available pixelRate values are:\n" + pixel_rate_valid_values,
+                                            "Pco::write_shutterMode_callback");
         }
-
-        if (current == "SLOW")
-            current = "95333333";
-        if (current == "FAST")
-            current = "286000000";
-
-        std::string cmd = "pixelRate " + current; 
-        m_camera->talk((char*)cmd.c_str());
+     
+        int value_to_write = yat::StringUtil::to_num<int>(std::string(attr_pixelRate_write));
+        m_camera->setPixelRate(value_to_write);
     }
-    catch(Tango::DevFailed& df)
+    catch (yat::Exception& ex)
     {
-        ERROR_STREAM << df << endl;
-        //- rethrow exception
-        Tango::Except::re_throw_exception(df,
-                    static_cast<const char*> ("TANGO_DEVICE_ERROR"),
-                    static_cast<const char*> (string(df.errors[0].desc).c_str()),
-                    static_cast<const char*> ("Pco::write_pixelScanRate"));
-    }		
-    catch(Exception& e)
+        THROW_YAT_TO_TANGO_EXCEPTION(ex);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception("LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::write_pixelScanRate");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		Pco::read_cameraModel
+// 
+// description : 	Extract real attribute values for cameraModel acquisition result.
+//
+//-----------------------------------------------------------------------------
+void Pco::read_cameraModel(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Pco::read_cameraModel(Tango::Attribute &attr) entering... "<< endl;
+
+    try
+    {
+        strcpy(*attr_cameraModel_read, m_camera_model.c_str());
+        attr.set_value(attr_cameraModel_read);
+    }
+    catch (yat::Exception& ex)
+    {
+        THROW_YAT_TO_TANGO_EXCEPTION(ex);
+    }
+    catch (lima::Exception& e)
     {
         ERROR_STREAM << e.getErrMsg() << endl;
         //- throw exception
         Tango::Except::throw_exception(
-                    static_cast<const char*> ("LIMA_ERROR"),
-                    static_cast<const char*> (e.getErrMsg().c_str()),
-                    static_cast<const char*> ("Pco::write_pixelScanRate"));
+                                    "LIMA_ERROR",
+                                    e.getErrMsg().c_str(),
+                                    "Pco::read_cameraModel");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		Pco::read_dllVersion
+// 
+// description : 	Extract real attribute values for dllVersion acquisition result.
+//
+//-----------------------------------------------------------------------------
+void Pco::read_dllVersion(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Pco::read_dllVersion(Tango::Attribute &attr) entering... "<< endl;
+
+    try
+    {
+        strcpy(*attr_dllVersion_read, m_dll_version.c_str());
+        attr.set_value(attr_dllVersion_read);
+    }
+    catch (yat::Exception& ex)
+    {
+        THROW_YAT_TO_TANGO_EXCEPTION(ex);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::read_dllVersion");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::read_doubleImage_callback()
+//
+// description : Extract real attribute values for cdi
+//
+//-----------------------------------------------------------------------------
+void Pco::read_doubleImage_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
+{
+    DEBUG_STREAM << "Pco::read_doubleImage_callback()" << endl;
+
+    try
+    {
+        WORD wDoubleImage = 0;
+        int dummy_err = -10;
+        m_camera->_pco_GetDoubleImageMode(wDoubleImage, dummy_err);
+        *attr_doubleImage_read = (Tango::DevBoolean)wDoubleImage;
+        cbd.tga->set_value(attr_doubleImage_read);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception( "LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::read_doubleImage_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::write_doubleImage_callback()
+//
+// description : Extract real attribute values for cdi
+//
+//-----------------------------------------------------------------------------
+void Pco::write_doubleImage_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd)
+{
+    INFO_STREAM << "Pco::write_doubleImage_callback()" << endl;
+
+        if (get_state() == Tango::FAULT   ||
+            get_state() == Tango::RUNNING ||
+            get_state() == Tango::DISABLE)
+        {
+            std::string reason = "It's currently not allowed to write attribute doubleImage. The device state is " + std::string(Tango::DevStateName[get_state()]);
+            Tango::Except::throw_exception( "TANGO_DEVICE_ERROR",
+                                            reason.c_str(),
+                                            "Pco::write_doubleImage_callback()");
+        }
+
+    try
+    {
+        cbd.tga->get_write_value(attr_doubleImage_write);
+        m_camera->setDoubleImageMode(attr_doubleImage_write);
+
+        //- Memorize the value
+        yat4tango::PropertyHelper::set_property(this, "__MemorizedDoubleImage", attr_doubleImage_write);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception( "LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::write_doubleImage_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::read_forcedFIFOMode_callback()
+//
+// description : Extract real attribute values for forcedFIFOMod
+//
+//-----------------------------------------------------------------------------
+void Pco::read_forcedFIFOMode_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
+{
+    DEBUG_STREAM << "Pco::read_forcedFIFOMode_callback()" << endl;
+
+    try
+    {
+        int temp_fifo = -1;
+        m_camera->getRecorderForcedFifo(temp_fifo);
+        *attr_forcedFIFOMode_read = (Tango::DevBoolean) temp_fifo;
+        cbd.tga->set_value(attr_forcedFIFOMode_read);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception( "LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::read_forcedFIFOMode_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::write_forcedFIFOMode_callback()
+//
+// description : Extract real attribute values for forcedFIFOMode
+//
+//-----------------------------------------------------------------------------
+void Pco::write_forcedFIFOMode_callback(yat4tango::DynamicAttributeWriteCallbackData& cbd)
+{
+    INFO_STREAM << "Pco::write_forcedFIFOMode_callback()" << endl;
+
+        if (get_state() == Tango::FAULT   ||
+            get_state() == Tango::RUNNING ||
+            get_state() == Tango::DISABLE)
+        {
+            std::string reason = "It's currently not allowed to write attribute forcedFIFOMode. The device state is " + std::string(Tango::DevStateName[get_state()]);
+            Tango::Except::throw_exception( "TANGO_DEVICE_ERROR",
+                                            reason.c_str(),
+                                            "Pco::write_forcedFIFOMode_callback()");
+        }
+
+    try
+    {
+        cbd.tga->get_write_value(attr_forcedFIFOMode_write);
+        m_camera->setRecorderForcedFifo((int)attr_forcedFIFOMode_write);
+
+        //- Memorize the value
+        yat4tango::PropertyHelper::set_property(this, "__MemorizedForcedFIFOMode", attr_forcedFIFOMode_write);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception( "LIMA_ERROR",
+                                        e.getErrMsg().c_str(),
+                                        "Pco::write_forcedFIFOMode_callback");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method :         Pco::read_currentRecordedFrame_callback()
+//
+// description : Extract real attribute values for maxNbImage
+//
+//-----------------------------------------------------------------------------
+void Pco::read_currentRecordedFrame_callback(yat4tango::DynamicAttributeReadCallbackData& cbd)
+{
+    DEBUG_STREAM << "Pco::read_currentRecordedFrame_callback()" << endl; //  << cbd.dya->get_name() << endl;
+
+    try
+    {
+        if (get_state() == Tango::RUNNING || get_state() == Tango::STANDBY)
+        {
+            m_camera->getLastImgRecorded(*attr_currentRecordedFrame_read);
+        }
+        cbd.tga->set_value(attr_currentRecordedFrame_read);
+    }
+    catch (lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception(
+            "LIMA_ERROR",
+            e.getErrMsg().c_str(),
+            "Pco::read_currentRecordedFrame_callback");
     }
 }
 
@@ -543,16 +1392,16 @@ void Pco::write_pixelScanRate(Tango::WAttribute &attr)
  *	method:	Pco::talk
  *
  *	description:	method to execute "Talk"
- *	Availables values are:
- *	lasterror
- *	camInfo
- *	camType
- *	clTransferParam
- *	cocRunTime
- *	frameRate
- *	maxNbImages
- *	timestamp
- *	" "
+ *	Availables values are:<br>
+ *	lasterror<br>
+ *	camInfo<br>
+ *	camType<br>
+ *	clTransferParam<br>
+ *	cocRunTime<br>
+ *	frameRate<br>
+ *	maxNbImages<br>
+ *	timestamp<br>
+ *	" "<br>
  *
  * @param	argin	str argin
  * @return	str argout
@@ -561,30 +1410,35 @@ void Pco::write_pixelScanRate(Tango::WAttribute &attr)
 //+------------------------------------------------------------------
 Tango::DevString Pco::talk(Tango::DevString argin)
 {
-	//	POGO has generated a method core with argout allocation.
-	//	If you would like to use a static reference without copying,
-	//	See "TANGO Device Server Programmer's Manual"
-	//		(chapter : Writing a TANGO DS / Exchanging data)
-	//------------------------------------------------------------
-	Tango::DevString	argout  = new char[MAX_ATTRIBUTE_STRING_LENGTH];
-	strcpy(argout, "dummy");
-	DEBUG_STREAM << "Pco::talk(): entering... !" << endl;
+    //	POGO has generated a method core with argout allocation.
+    //	If you would like to use a static reference without copying,
+    //	See "TANGO Device Server Programmer's Manual"
+    //		(chapter : Writing a TANGO DS / Exchanging data)
+    //------------------------------------------------------------
+    DEBUG_STREAM << "Pco::talk(): entering... !" << endl;
 
-	//	Add your own code to control device here
-        
-    try
-    {
-	    argout = m_camera->talk(argin);
-        return argout;
-    }
-    catch(Exception& e)
+    //	Add your own code to control device here
+	Tango::DevString argout;
+	try
+	{
+		string result("");
+		result = m_camera->talk(std::string(argin));
+
+		argout = new char[result.size() + 1];
+		if (result.size() > 0)
+		{
+			result.copy(argout, result.size());
+		}
+		argout[result.size()] = 0;
+		return argout;
+	}
+    catch(lima::Exception& e)
     {
         ERROR_STREAM << e.getErrMsg() << endl;
         //- throw exception
-        Tango::Except::throw_exception(
-                    static_cast<const char*> ("LIMA_ERROR"),
-                    static_cast<const char*> (e.getErrMsg().c_str()),
-                    static_cast<const char*> ("Pco::talk"));
+        Tango::Except::throw_exception("LIMA_ERROR",
+                                       e.getErrMsg().c_str(),
+                                       "Pco::talk");
     }
 }
 
@@ -601,79 +1455,88 @@ Tango::DevString Pco::talk(Tango::DevString argin)
 //+------------------------------------------------------------------
 Tango::DevString Pco::get_cam_info()
 {
-	//	POGO has generated a method core with argout allocation.
-	//	If you would like to use a static reference without copying,
-	//	See "TANGO Device Server Programmer's Manual"
-	//		(chapter : Writing a TANGO DS / Exchanging data)
-	//------------------------------------------------------------
-	Tango::DevString	argout  = new char[MAX_ATTRIBUTE_STRING_LENGTH];
-	strcpy(argout, "dummy");
-	DEBUG_STREAM << "Pco::get_cam_info(): entering... !" << endl;
+    //	POGO has generated a method core with argout allocation.
+    //	If you would like to use a static reference without copying,
+    //	See "TANGO Device Server Programmer's Manual"
+    //		(chapter : Writing a TANGO DS / Exchanging data)
+    //------------------------------------------------------------
+    INFO_STREAM << "Pco::get_cam_info(): entering... !" << endl;
 
-	//	Add your own code to control device here
+    //	Add your own code to control device here
+	Tango::DevString argout;
+	try
+	{
+		string result("");
+		result = m_camera->talk(std::string("camInfo"));
 
-    argout = talk("camInfo");
-
-
-	return argout;
+		argout = new char[result.size() + 1];
+		if (result.size() > 0)
+		{
+			result.copy(argout, result.size());
+		}
+		argout[result.size()] = 0;
+		return argout;
+	}
+    catch(lima::Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception("LIMA_ERROR",
+                                       e.getErrMsg().c_str(),
+                                       "Pco::get_cam_info");
+    }    
 }
 
 //+------------------------------------------------------------------
 /**
- *	method:	Pco::get_cam_type
+ *	method:	Pco::dev_state
  *
- *	description:	method to execute "GetCamType"
- *	Get Camera Type
+ *	description:	method to execute "State"
+ *	This command gets the device state (stored in its <i>device_state</i> data member) and returns it to the caller.
  *
- * @return	cam type
- *
- */
-//+------------------------------------------------------------------
-Tango::DevString Pco::get_cam_type()
-{
-	//	POGO has generated a method core with argout allocation.
-	//	If you would like to use a static reference without copying,
-	//	See "TANGO Device Server Programmer's Manual"
-	//		(chapter : Writing a TANGO DS / Exchanging data)
-	//------------------------------------------------------------
-	Tango::DevString	argout  = new char[MAX_ATTRIBUTE_STRING_LENGTH];
-	strcpy(argout, "dummy");
-	DEBUG_STREAM << "Pco::get_cam_type(): entering... !" << endl;
-
-	//	Add your own code to control device here
-
-    argout = talk("camType");
-
-	return argout;
-}
-
-//+------------------------------------------------------------------
-/**
- *	method:	Pco::get_info
- *
- *	description:	method to execute "GetInfo"
- *	Get Infos
- *
- * @return	infos
+ * @return	State Code
  *
  */
 //+------------------------------------------------------------------
-Tango::DevString Pco::get_info()
+Tango::DevState Pco::dev_state()
 {
-	//	POGO has generated a method core with argout allocation.
-	//	If you would like to use a static reference without copying,
-	//	See "TANGO Device Server Programmer's Manual"
-	//		(chapter : Writing a TANGO DS / Exchanging data)
-	//------------------------------------------------------------
-	Tango::DevString	argout  = new char[MAX_ATTRIBUTE_STRING_LENGTH];
-	strcpy(argout, "dummy");
-	DEBUG_STREAM << "Pco::get_info(): entering... !" << endl;
+    Tango::DevState	argout = DeviceImpl::dev_state();
+    DEBUG_STREAM << "Pco::dev_state(): entering... !" << endl;
 
-	//	Add your own code to control device here
+    //	Add your own code to control device here
 
-    argout = talk(" ");
+    stringstream DeviceStatus;
+    DeviceStatus.str("");
+    Tango::DevState DeviceState = Tango::STANDBY;
 
-	return argout;
+    //if error during init_device
+    if(!m_is_device_initialized)
+    {
+        DeviceState = Tango::FAULT;
+        DeviceStatus << m_status_message.str();
+        DeviceStatus << endl;
+    }
+    else
+    {
+        // let's take a look at the status of control & the status of the plugin        
+        DeviceState = ControlFactory::instance().get_state();
+        DeviceStatus << ControlFactory::instance().get_status();
+    }
+
+    set_state(DeviceState);
+    set_status(DeviceStatus.str());
+
+    argout = DeviceState;
+    return argout;
 }
+
+
+
+
+
+
+
+
+
 
 }	//	namespace

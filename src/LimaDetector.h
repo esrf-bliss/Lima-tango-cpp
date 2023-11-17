@@ -4,7 +4,7 @@
 //
 // description : Include for the LimaDetector class.
 //
-// project :	LimaDetector
+// project :	Lima Device Generic
 //
 // $Author:  $
 //
@@ -37,11 +37,29 @@
 //- Tango
 #include <tango.h>
 
+//undef some Mx library CONSTANTS, otherwise compilation errors  with Yat/utils/Loging.h enum ELogLevel
+#undef LOG_INFO
+#undef LOG_EMERG
+#undef LOG_ALERT
+#undef LOG_CRIT
+#undef LOG_ERR
+#undef LOG_WARNING
+#undef LOG_NOTICE
+#undef LOG_INFO
+#undef LOG_DEBUG
+
 //- YAT/YAT4TANGO
+#include <yat/CommonHeader.h>
 #include <yat/memory/SharedPtr.h>
 #include <yat4tango/PropertyHelper.h>
 #include <yat4tango/InnerAppender.h>
+#include <yat4tango/YatLogAdapter.h>
 #include <yat4tango/DynamicInterfaceManager.h>
+#include <yat4tango/DeviceInfo.h>
+
+//- NEXUSCPP
+#include <nexuscpp/nexuscpp.h> // needed by nxcpp::get_name() in dependecies
+
 //- STL 
 #include <algorithm>
 #include <string>
@@ -56,9 +74,12 @@
 #include "lima/CtSaving.h"
 #include "lima/CtBuffer.h"
 #include "lima/CtImage.h"
+#include "lima/SoftOpId.h"
+#include "lima/SoftOpExternalMgr.h"
 #include "processlib/Data.h"
 #include "lima/CtVideo.h"
 #include "lima/CtShutter.h"
+#include "lima/CtEvent.h"
 
 
 
@@ -77,7 +98,6 @@ using namespace std;
 //-----------------------------------------------
 
 const size_t MAX_ATTRIBUTE_STRING_LENGTH = 256;
-const size_t LOG_BUFFER_DEPTH = 1024;
 
 namespace LimaDetector_ns
 {
@@ -161,6 +181,8 @@ public:
 		Tango::DevDouble	attr_exposureTime_write;
 		Tango::DevDouble	*attr_latencyTime_read;
 		Tango::DevDouble	attr_latencyTime_write;
+		Tango::DevDouble	*attr_frameRate_read;
+		Tango::DevDouble	attr_frameRate_write;
 		Tango::DevUShort	*attr_roiX_read;
 		Tango::DevUShort	*attr_roiY_read;
 		Tango::DevUShort	*attr_roiWidth_read;
@@ -172,8 +194,16 @@ public:
 		Tango::DevULong	*attr_currentFrame_read;
 		Tango::DevBoolean	*attr_fileGeneration_read;
 		Tango::DevBoolean	attr_fileGeneration_write;
+		Tango::DevString	*attr_fileFormat_read;
+		Tango::DevString	attr_fileFormat_write;
+		Tango::DevString	*attr_filePrefix_read;
+		Tango::DevString	attr_filePrefix_write;
+		Tango::DevString	*attr_fileTargetPath_read;
+		Tango::DevString	attr_fileTargetPath_write;
 		Tango::DevLong	*attr_fileNbFrames_read;
 		Tango::DevLong	attr_fileNbFrames_write;
+		Tango::DevString	*attr_fileExtension_read;
+		Tango::DevString	*attr_operationsList_read;
 //@}
 
     /**
@@ -182,34 +212,56 @@ public:
      */
     //@{
 /**
+ *	Allows calling automatically the "Start" command when:<br>
+ *	- The device starts.<br>
+ *	- After calling the "Init" command.
+ */
+	Tango::DevBoolean	autoStartVideo;
+/**
+ *	Memorize the "full frame" automatically at the call of "ResetRoi" :<br>
+ *	[default = false]
+ */
+	Tango::DevBoolean	autoSaveResetRoi;
+/**
  *	Detector user-defined text to identify the engine.
  */
 	string	detectorDescription;
 /**
  *	Define the type of the connected Detector .<BR>
  *	Availables types :<BR>
- *	- AdscCCD<BR>
- *	- AviexCCD<br>
+ *	- AndorCCD<BR>
  *	- BaslerCCD<BR>
+ *	- Dhyana<br>
  *	- Eiger<br>
  *	- Hamamatsu<br>
+ *	- ImXpad<br>
+ *	- Lambda<br>
  *	- MarCCD<BR>
+ *	- Maxipix<BR>
+ *	- Merlin<BR>
  *	- Pco<BR>
  *	- PerkinElmer<BR>
  *	- PilatusPixelDetector<BR>
- *	- ProsilicaCCD<BR>
  *	- PrincetonCCD<BR>
  *	- SimulatorCCD<BR>
+ *	- SlsEiger<BR>
+ *	- SlsJungfrau<BR>
+ *	- SpectralInstrument<BR>
+ *	- SpectrumOneCCD<BR>
+ *	- Ufxc<BR>
+ *	- UviewCCD<BR>
  *	- XpadPixelDetector<BR>
- *	
- *	
  */
 	string	detectorType;
 /**
  *	Define the pixel depth of the detector : <br>
  *	Availables values : <br>
  *	- 8 <br>
+ *	- 12<br>
  *	- 16<br>
+ *	- 16S<br>
+ *	- 24<br>
+ *	- 24S<br>
  *	- 32<br>
  *	- 32S<br>
  */
@@ -246,10 +298,18 @@ public:
 	string	detectorVideoMode;
 /**
  *	Choose the source of Data given to the image attribute :<br>
- *	- VIDEO : use ctVideo->LastImage()
+ *	- VIDEO : use ctVideo->LastImage()<br>
  *	- ACQUISITION : use ctControl->ReadImage()
  */
 	string	imageSource;
+/**
+ *	Define ImageOpMode for Roi/Binning/etc...  :<br>
+ *	Availables values :<br>
+ *	- HardOnly<br>
+ *	- SoftOnly<br>
+ *	- HardAndSoft<br>
+ */
+	string	imageOpMode;
 /**
  *	Define the format of image files :<BR>
  *	Availables values :<br>
@@ -278,19 +338,25 @@ public:
  */
 	string	fileTargetPath;
 /**
- *	
+ *	Define the nombre of frames to push in each saving file.
  */
 	Tango::DevLong	fileNbFrames;
 /**
- *	Available only for Nexus format : Fix the SetWriteMode(). <br>
+ *	Define the File managed Mode :<br>
+ *	- HARDWARE : <br>
+ *	- SOFTWARE  : <br>
+ */
+	string	fileManagedMode;
+/**
+ *	Available only for Nexus format : set the SetWriteMode(). <br>
  *	Available values :<br>
- *	- IMMEDIATE<br>
+ *	- ASYNCHRONOUS<br>
  *	- SYNCHRONOUS<br>
  *	- DELAYED
  */
 	string	fileWriteMode;
 /**
- *	Available only for Nexus format : Fix the SetDataItemMemoryMode().<br>
+ *	Available only for Nexus format : set the SetDataItemMemoryMode().<br>
  *	Available values :<br>
  *	- COPY<br>
  *	- NO_COPY
@@ -300,14 +366,6 @@ public:
  *	Define wether the timestamp is requested in the Nexus file or not<br>
  */
 	Tango::DevBoolean	fileTimestampEnabled;
-/**
- *	Define the Percent of Memory reserved by buffer control (from 0 to 100 %).
- */
-	Tango::DevUShort	bufferMaxMemoryPercent;
-/**
- *	
- */
-	Tango::DevBoolean	usePrepareCmd;
 /**
  *	Define modules that we need to have some debug traces.<BR>
  *	Availables values :<BR>
@@ -342,6 +400,20 @@ public:
  *	- FileLine<BR>
  */
 	vector<string>	debugFormats;
+/**
+ *	Define the Percent of Memory reserved to Lima buffer control.<br>
+ *	BufferMaxMemoryPercent = 70, allow a Memory of 1.4 Go. (Default)<br>
+ *	BufferMaxMemoryPercent = 100, allow a Memory of 2 Go. (Maximum)
+ */
+	Tango::DevUShort	expertBufferMaxMemoryPercent;
+/**
+ *	Defines the number of threads dedicated to process images in the ProcessLib
+ */
+	Tango::DevUShort	expertNbPoolThread;
+/**
+ *	Define the Timeout (in ms) for some commands (snap/start/stop/prepare).<br>
+ */
+	Tango::DevULong	expertTimeoutCmd;
 /**
  *	Memorize/Define the Region of Interest of the Acquisition: <br>
  *	origin X<br>
@@ -423,11 +495,9 @@ public:
  */
 	Tango::DevLong	memorizedFileNbFrames;
 /**
- *	Allows calling automatically the "Start" command when:<br>
- *	- The device starts.
- *	- After calling the "Init" command.
+ *	
  */
-	Tango::DevBoolean	autoStartVideo;
+	string	spoolID;
 //@}
 
     /**
@@ -568,6 +638,14 @@ public:
  */
 	virtual void write_latencyTime(Tango::WAttribute &attr);
 /**
+ *	Extract real attribute values for frameRate acquisition result.
+ */
+	virtual void read_frameRate(Tango::Attribute &attr);
+/**
+ *	Write frameRate attribute values to hardware.
+ */
+	virtual void write_frameRate(Tango::WAttribute &attr);
+/**
  *	Extract real attribute values for roiX acquisition result.
  */
 	virtual void read_roiX(Tango::Attribute &attr);
@@ -612,6 +690,30 @@ public:
  */
 	virtual void write_fileGeneration(Tango::WAttribute &attr);
 /**
+ *	Extract real attribute values for fileFormat acquisition result.
+ */
+	virtual void read_fileFormat(Tango::Attribute &attr);
+/**
+ *	Write fileFormat attribute values to hardware.
+ */
+	virtual void write_fileFormat(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for filePrefix acquisition result.
+ */
+	virtual void read_filePrefix(Tango::Attribute &attr);
+/**
+ *	Write filePrefix attribute values to hardware.
+ */
+	virtual void write_filePrefix(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for fileTargetPath acquisition result.
+ */
+	virtual void read_fileTargetPath(Tango::Attribute &attr);
+/**
+ *	Write fileTargetPath attribute values to hardware.
+ */
+	virtual void write_fileTargetPath(Tango::WAttribute &attr);
+/**
  *	Extract real attribute values for fileNbFrames acquisition result.
  */
 	virtual void read_fileNbFrames(Tango::Attribute &attr);
@@ -619,6 +721,14 @@ public:
  *	Write fileNbFrames attribute values to hardware.
  */
 	virtual void write_fileNbFrames(Tango::WAttribute &attr);
+/**
+ *	Extract real attribute values for fileExtension acquisition result.
+ */
+	virtual void read_fileExtension(Tango::Attribute &attr);
+/**
+ *	Extract real attribute values for operationsList acquisition result.
+ */
+	virtual void read_operationsList(Tango::Attribute &attr);
 /**
  *	Read/Write allowed for detectorDescription attribute.
  */
@@ -668,6 +778,10 @@ public:
  */
 	virtual bool is_latencyTime_allowed(Tango::AttReqType type);
 /**
+ *	Read/Write allowed for frameRate attribute.
+ */
+	virtual bool is_frameRate_allowed(Tango::AttReqType type);
+/**
  *	Read/Write allowed for roiX attribute.
  */
 	virtual bool is_roiX_allowed(Tango::AttReqType type);
@@ -704,9 +818,29 @@ public:
  */
 	virtual bool is_fileGeneration_allowed(Tango::AttReqType type);
 /**
+ *	Read/Write allowed for fileFormat attribute.
+ */
+	virtual bool is_fileFormat_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for filePrefix attribute.
+ */
+	virtual bool is_filePrefix_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for fileTargetPath attribute.
+ */
+	virtual bool is_fileTargetPath_allowed(Tango::AttReqType type);
+/**
  *	Read/Write allowed for fileNbFrames attribute.
  */
 	virtual bool is_fileNbFrames_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for fileExtension attribute.
+ */
+	virtual bool is_fileExtension_allowed(Tango::AttReqType type);
+/**
+ *	Read/Write allowed for operationsList attribute.
+ */
+	virtual bool is_operationsList_allowed(Tango::AttReqType type);
 /**
  *	Execution allowed for Prepare command.
  */
@@ -744,6 +878,10 @@ public:
  */
 	virtual bool is_GetAttributeAvailableValues_allowed(const CORBA::Any &any);
 /**
+ *	Execution allowed for GetAvailableCapabilities command.
+ */
+	virtual bool is_GetAvailableCapabilities_allowed(const CORBA::Any &any);
+/**
  *	Execution allowed for ResetFileIndex command.
  */
 	virtual bool is_ResetFileIndex_allowed(const CORBA::Any &any);
@@ -751,6 +889,14 @@ public:
  *	Execution allowed for ReloadROI command.
  */
 	virtual bool is_ReloadROI_allowed(const CORBA::Any &any);
+/**
+ *	Execution allowed for GetDataStreams command.
+ */
+	virtual bool is_GetDataStreams_allowed(const CORBA::Any &any);
+/**
+ *	Execution allowed for InitInterface command.
+ */
+	virtual bool is_InitInterface_allowed(const CORBA::Any &any);
 /**
  * This command gets the device state (stored in its <i>device_state</i> data member) and returns it to the caller.
  *	@return	State Code
@@ -810,6 +956,18 @@ public:
  */
 	Tango::DevVarStringArray	*get_attribute_available_values(Tango::DevString);
 /**
+ * Return a list of string containing all available capabilitiesof the detector :<br>
+ *	- Roi<br>
+ *	- Binning<br>
+ *	- Trigger<br>
+ *	- Shutter<br>
+ *	- Event Errors<br>
+ *	- ...<br>
+ *	@return	The list of available capabilities
+ *	@exception DevFailed
+ */
+	Tango::DevVarStringArray	*get_available_capabilities();
+/**
  * Reset the file index
  *	@exception DevFailed
  */
@@ -819,6 +977,17 @@ public:
  *	@exception DevFailed
  */
 	void	reload_roi();
+/**
+ * Returns the flyscan data streams associated with this device.
+ *	@return	
+ *	@exception DevFailed
+ */
+	Tango::DevVarStringArray	*get_data_streams();
+/**
+ * Re-inits the LimaDetector interface. Allows to recreate some dynamics attributes.
+ *	@exception DevFailed
+ */
+	void	init_interface();
 
 /**
  *	Read the device properties from database
@@ -828,10 +997,46 @@ public:
 
     //    Here is the end of the automatic code generation part
     //-------------------------------------------------------------    
+    ///generics methods to create a tango dynamic attribute
+    template <class F1, class F2>
+    void create_attribute(std::string name,
+         int data_type,
+         Tango::AttrDataFormat data_format,
+         Tango::AttrWriteType access_type,
+         Tango::DispLevel disp_level,
+         const std::string& unit,
+         const std::string& format,
+         const std::string& desc,
+         F1 read_callback,
+         F2 write_callback);
 
-    //method in charge of displaying image in the "image" dynamic attribute
+    ///generic method to create a tango dynamic command
+    template <class F1>
+    void create_command(std::string name,
+         long in_type,
+         long out_type,
+         Tango::DispLevel disp_level,
+         F1 execute_callback);
+
+    // method for tango dyn attributes WHEN no read part is available - NULL
+    void read_callback_null(yat4tango::DynamicAttributeReadCallbackData& cbd)
+    {
+     /*nop*/
+    }
+
+    // method for tango dyn attributes WHEN no write part is available - NULL
+    void write_callback_null(yat4tango::DynamicAttributeWriteCallbackData& cbd)
+    {
+     /*nop*/
+    }
+
+    //image dynamic attribute management
+    void    add_image_dynamic_attribute(const std::string& attr_name);
     void    read_image_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
+    void    read_baseImage_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);
 
+    //sutter dynamic attributes management
+    void    add_shutter_dynamic_attributes(void);
     void    execute_open_shutter_callback (yat4tango::DynamicCommandExecuteCallbackData& cbd);
     void    execute_close_shutter_callback (yat4tango::DynamicCommandExecuteCallbackData& cbd);
 
@@ -851,12 +1056,22 @@ public:
     
     void    read_currentAccFrame_callback(yat4tango::DynamicAttributeReadCallbackData& cbd);    
 
+    void    create_log_info_attributes(void);    
+    void    delete_log_info_attributes(void);        
+    void    configure_available_trigger_mode(void);
+    void    configure_image_type(void);
+    void    configure_video_mode(void);    
+    void    configure_saving_parameters(void); 
+    void    configure_roi(void); 
+    void    configure_binning(void); 
+    void    configure_image_op_mode(void);    
+    void    configure_attributes_hardware_at_init(void);
+    
     // return true if the device is correctly initialized in init_device
     bool    is_device_initialized()
     {
         return m_is_device_initialized;
     };
-
 
 protected:
     //    Add your own data members here
@@ -885,6 +1100,8 @@ protected:
     string                              m_shutter_mode; 	//shutter mode name 	(MANUAL, AUTO_FRAME, AUTO_SEQUENCE)
     string                              m_acquisition_mode;	//aquisition mode name 	(SINGLE, ACCUMULATION) nota: imageType is forced to 32 bits in ACCUMULATION MODE
     string                              m_saving_options;
+    string                              m_file_format;      //file format name 	(NXS,EDF,HDF5,RAW)
+
     //- yat4tango::DeviceTask object : manage device Start/Snap/Stop commands
     yat::SharedPtr<AcquisitionTask>     m_acquisition_task;
     AcquisitionTask::AcqConfig          m_acq_conf;
@@ -895,9 +1112,17 @@ protected:
 
     //- yat4tango Dynamic attributes & commands
     yat4tango::DynamicInterfaceManager	m_dim;
+	
+	bool 								m_use_prepare_command;
 
 } ;
 
 }    // namespace_ns
+
+
+///////////////////////////////////////////////////////////////////////////////
+//// INCLUDE TEMPLATE IMPLEMENTAION
+///////////////////////////////////////////////////////////////////////////////
+#include "LimaDetector.hpp"
 
 #endif    // _LimaDetector_H

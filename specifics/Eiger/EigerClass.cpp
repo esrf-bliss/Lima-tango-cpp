@@ -59,6 +59,74 @@ __declspec(dllexport)
 
 namespace Eiger_ns
 {
+//+----------------------------------------------------------------------------
+//
+// method : 		UpdateTHClass::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *UpdateTHClass::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "UpdateTHClass::execute(): arrived" << endl;
+
+	((static_cast<Eiger *>(device))->update_th());
+	return new CORBA::Any();
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		DisarmCmd::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *DisarmCmd::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "DisarmCmd::execute(): arrived" << endl;
+
+	((static_cast<Eiger *>(device))->disarm());
+	return new CORBA::Any();
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		InitializeCmd::execute()
+// 
+// description : 	method to trigger the execution of the command.
+//                PLEASE DO NOT MODIFY this method core without pogo   
+//
+// in : - device : The device on which the command must be executed
+//		- in_any : The command input data
+//
+// returns : The command output data (packed in the Any object)
+//
+//-----------------------------------------------------------------------------
+CORBA::Any *InitializeCmd::execute(Tango::DeviceImpl *device,const CORBA::Any &in_any)
+{
+
+	cout2 << "InitializeCmd::execute(): arrived" << endl;
+
+	((static_cast<Eiger *>(device))->initialize());
+	return new CORBA::Any();
+}
+
+
+
 
 
 //
@@ -147,6 +215,21 @@ EigerClass *EigerClass::instance()
 //-----------------------------------------------------------------------------
 void EigerClass::command_factory()
 {
+	command_list.push_back(new InitializeCmd("Initialize",
+		Tango::DEV_VOID, Tango::DEV_VOID,
+		"",
+		"",
+		Tango::OPERATOR));
+	command_list.push_back(new DisarmCmd("Disarm",
+		Tango::DEV_VOID, Tango::DEV_VOID,
+		"",
+		"",
+		Tango::OPERATOR));
+	command_list.push_back(new UpdateTHClass("UpdateTH",
+		Tango::DEV_VOID, Tango::DEV_VOID,
+		"",
+		"",
+		Tango::OPERATOR));
 
 	//	add polling if any
 	for (unsigned int i=0 ; i<command_list.size(); i++)
@@ -245,71 +328,252 @@ void EigerClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	//	Attribute : countrateCorrection
 	countrateCorrectionAttrib	*countrate_correction = new countrateCorrectionAttrib();
 	Tango::UserDefaultAttrProp	countrate_correction_prop;
-	countrate_correction_prop.set_label("Countrate correction");
+	countrate_correction_prop.set_unit(" ");
 	countrate_correction->set_default_properties(countrate_correction_prop);
+	countrate_correction->set_disp_level(Tango::EXPERT);
 	att_list.push_back(countrate_correction);
 
 	//	Attribute : flatfieldCorrection
 	flatfieldCorrectionAttrib	*flatfield_correction = new flatfieldCorrectionAttrib();
 	Tango::UserDefaultAttrProp	flatfield_correction_prop;
-	flatfield_correction_prop.set_label("Flatfield correction");
+	flatfield_correction_prop.set_unit(" ");
 	flatfield_correction->set_default_properties(flatfield_correction_prop);
 	att_list.push_back(flatfield_correction);
 
 	//	Attribute : pixelMask
 	pixelMaskAttrib	*pixel_mask = new pixelMaskAttrib();
 	Tango::UserDefaultAttrProp	pixel_mask_prop;
-	pixel_mask_prop.set_label("Pixel mask");
+	pixel_mask_prop.set_unit(" ");
 	pixel_mask->set_default_properties(pixel_mask_prop);
 	att_list.push_back(pixel_mask);
 
 	//	Attribute : virtualPixelCorrection
 	virtualPixelCorrectionAttrib	*virtual_pixel_correction = new virtualPixelCorrectionAttrib();
 	Tango::UserDefaultAttrProp	virtual_pixel_correction_prop;
-	virtual_pixel_correction_prop.set_label("VirtualPixel correction");
+	virtual_pixel_correction_prop.set_unit(" ");
 	virtual_pixel_correction->set_default_properties(virtual_pixel_correction_prop);
+	virtual_pixel_correction->set_disp_level(Tango::EXPERT);
 	att_list.push_back(virtual_pixel_correction);
 
-	//	Attribute : efficiencyCorrection
-	efficiencyCorrectionAttrib	*efficiency_correction = new efficiencyCorrectionAttrib();
-	Tango::UserDefaultAttrProp	efficiency_correction_prop;
-	efficiency_correction_prop.set_label("Efficiency Correction");
-	efficiency_correction->set_default_properties(efficiency_correction_prop);
-	att_list.push_back(efficiency_correction);
+	//	Attribute : managedMode
+	managedModeAttrib	*managed_mode = new managedModeAttrib();
+	Tango::UserDefaultAttrProp	managed_mode_prop;
+	managed_mode_prop.set_unit(" ");
+	managed_mode_prop.set_standard_unit(" ");
+	managed_mode_prop.set_display_unit(" ");
+	managed_mode_prop.set_description("Available values of Managed Mode are : <br>\n- STREAMING: Image and header data are transferred via zeromq sockets & Nexus files could be generated into an user defined path. <br>\n- FILEWRITER: Image and the metadata are generated into the DCU in HDF5 format & data files are tranferred into an user defined path through the device & data files are deleted from DCU. <br>\n- LAZY : Image and the metadata are generated in DCU in HDF5 format .\n\n");
+	managed_mode->set_default_properties(managed_mode_prop);
+	att_list.push_back(managed_mode);
+
+	//	Attribute : dataCollectionDate
+	dataCollectionDateAttrib	*data_collection_date = new dataCollectionDateAttrib();
+	att_list.push_back(data_collection_date);
 
 	//	Attribute : thresholdEnergy
 	thresholdEnergyAttrib	*threshold_energy = new thresholdEnergyAttrib();
 	Tango::UserDefaultAttrProp	threshold_energy_prop;
-	threshold_energy_prop.set_label("Threshold energy");
+	threshold_energy_prop.set_unit("eV");
+	threshold_energy_prop.set_standard_unit("eV");
+	threshold_energy_prop.set_display_unit("eV");
 	threshold_energy->set_default_properties(threshold_energy_prop);
 	att_list.push_back(threshold_energy);
 
 	//	Attribute : photonEnergy
 	photonEnergyAttrib	*photon_energy = new photonEnergyAttrib();
 	Tango::UserDefaultAttrProp	photon_energy_prop;
-	photon_energy_prop.set_label("Photon energy");
+	photon_energy_prop.set_unit("eV");
+	photon_energy_prop.set_standard_unit("eV");
+	photon_energy_prop.set_display_unit("eV");
 	photon_energy->set_default_properties(photon_energy_prop);
 	att_list.push_back(photon_energy);
+
+	//	Attribute : wavelength
+	wavelengthAttrib	*wavelength = new wavelengthAttrib();
+	Tango::UserDefaultAttrProp	wavelength_prop;
+	wavelength_prop.set_unit("angstrom");
+	wavelength_prop.set_standard_unit("angstrom");
+	wavelength_prop.set_display_unit("angstrom");
+	wavelength->set_default_properties(wavelength_prop);
+	att_list.push_back(wavelength);
+
+	//	Attribute : roiMode
+	roiModeAttrib	*roi_mode = new roiModeAttrib();
+	att_list.push_back(roi_mode);
+
+	//	Attribute : beamCenterX
+	beamCenterXAttrib	*beam_center_x = new beamCenterXAttrib();
+	Tango::UserDefaultAttrProp	beam_center_x_prop;
+	beam_center_x_prop.set_unit("pixels");
+	beam_center_x_prop.set_standard_unit("pixels");
+	beam_center_x_prop.set_display_unit("pixels");
+	beam_center_x->set_default_properties(beam_center_x_prop);
+	att_list.push_back(beam_center_x);
+
+	//	Attribute : beamCenterY
+	beamCenterYAttrib	*beam_center_y = new beamCenterYAttrib();
+	Tango::UserDefaultAttrProp	beam_center_y_prop;
+	beam_center_y_prop.set_unit("pixels");
+	beam_center_y_prop.set_standard_unit("pixels");
+	beam_center_y_prop.set_display_unit("pixels");
+	beam_center_y->set_default_properties(beam_center_y_prop);
+	att_list.push_back(beam_center_y);
+
+	//	Attribute : detectorDistance
+	detectorDistanceAttrib	*detector_distance = new detectorDistanceAttrib();
+	Tango::UserDefaultAttrProp	detector_distance_prop;
+	detector_distance_prop.set_unit("m");
+	detector_distance_prop.set_standard_unit("m");
+	detector_distance_prop.set_display_unit("m");
+	detector_distance->set_default_properties(detector_distance_prop);
+	att_list.push_back(detector_distance);
+
+	//	Attribute : detectorReadoutTime
+	detectorReadoutTimeAttrib	*detector_readout_time = new detectorReadoutTimeAttrib();
+	Tango::UserDefaultAttrProp	detector_readout_time_prop;
+	detector_readout_time_prop.set_unit(" ");
+	detector_readout_time_prop.set_standard_unit(" ");
+	detector_readout_time_prop.set_display_unit(" ");
+	detector_readout_time->set_default_properties(detector_readout_time_prop);
+	att_list.push_back(detector_readout_time);
 
 	//	Attribute : temperature
 	temperatureAttrib	*temperature = new temperatureAttrib();
 	Tango::UserDefaultAttrProp	temperature_prop;
-	temperature_prop.set_label("Temperature");
+	temperature_prop.set_unit("Celsius");
+	temperature_prop.set_standard_unit("Celsius");
+	temperature_prop.set_display_unit("Celsius");
 	temperature->set_default_properties(temperature_prop);
 	att_list.push_back(temperature);
 
 	//	Attribute : humidity
 	humidityAttrib	*humidity = new humidityAttrib();
+	Tango::UserDefaultAttrProp	humidity_prop;
+	humidity_prop.set_unit("%");
+	humidity_prop.set_standard_unit("%");
+	humidity_prop.set_display_unit("%");
+	humidity->set_default_properties(humidity_prop);
 	att_list.push_back(humidity);
+
+	//	Attribute : chiIncrement
+	chiIncrementAttrib	*chi_increment = new chiIncrementAttrib();
+	Tango::UserDefaultAttrProp	chi_increment_prop;
+	chi_increment_prop.set_unit("degree");
+	chi_increment_prop.set_standard_unit("degree");
+	chi_increment_prop.set_display_unit("degree");
+	chi_increment->set_default_properties(chi_increment_prop);
+	att_list.push_back(chi_increment);
+
+	//	Attribute : chiStart
+	chiStartAttrib	*chi_start = new chiStartAttrib();
+	Tango::UserDefaultAttrProp	chi_start_prop;
+	chi_start_prop.set_unit("degree");
+	chi_start_prop.set_standard_unit("degree");
+	chi_start_prop.set_display_unit("degree");
+	chi_start->set_default_properties(chi_start_prop);
+	att_list.push_back(chi_start);
+
+	//	Attribute : kappaIncrement
+	kappaIncrementAttrib	*kappa_increment = new kappaIncrementAttrib();
+	Tango::UserDefaultAttrProp	kappa_increment_prop;
+	kappa_increment_prop.set_unit("degree");
+	kappa_increment_prop.set_standard_unit("degree");
+	kappa_increment_prop.set_display_unit("degree");
+	kappa_increment->set_default_properties(kappa_increment_prop);
+	att_list.push_back(kappa_increment);
+
+	//	Attribute : kappaStart
+	kappaStartAttrib	*kappa_start = new kappaStartAttrib();
+	Tango::UserDefaultAttrProp	kappa_start_prop;
+	kappa_start_prop.set_unit("degree");
+	kappa_start_prop.set_standard_unit("degree");
+	kappa_start_prop.set_display_unit("degree");
+	kappa_start->set_default_properties(kappa_start_prop);
+	att_list.push_back(kappa_start);
+
+	//	Attribute : omegaIncrement
+	omegaIncrementAttrib	*omega_increment = new omegaIncrementAttrib();
+	Tango::UserDefaultAttrProp	omega_increment_prop;
+	omega_increment_prop.set_unit("degree");
+	omega_increment_prop.set_standard_unit("degree");
+	omega_increment_prop.set_display_unit("degree");
+	omega_increment->set_default_properties(omega_increment_prop);
+	att_list.push_back(omega_increment);
+
+	//	Attribute : omegaStart
+	omegaStartAttrib	*omega_start = new omegaStartAttrib();
+	Tango::UserDefaultAttrProp	omega_start_prop;
+	omega_start_prop.set_unit("degree");
+	omega_start_prop.set_standard_unit("degree");
+	omega_start_prop.set_display_unit("degree");
+	omega_start->set_default_properties(omega_start_prop);
+	att_list.push_back(omega_start);
+
+	//	Attribute : phiIncrement
+	phiIncrementAttrib	*phi_increment = new phiIncrementAttrib();
+	Tango::UserDefaultAttrProp	phi_increment_prop;
+	phi_increment_prop.set_unit("degree");
+	phi_increment_prop.set_standard_unit("degree");
+	phi_increment_prop.set_display_unit("degree");
+	phi_increment->set_default_properties(phi_increment_prop);
+	att_list.push_back(phi_increment);
+
+	//	Attribute : phiStart
+	phiStartAttrib	*phi_start = new phiStartAttrib();
+	Tango::UserDefaultAttrProp	phi_start_prop;
+	phi_start_prop.set_unit("degree");
+	phi_start_prop.set_standard_unit("degree");
+	phi_start_prop.set_display_unit("degree");
+	phi_start->set_default_properties(phi_start_prop);
+	att_list.push_back(phi_start);
+
+	//	Attribute : autoSummation
+	autoSummationAttrib	*auto_summation = new autoSummationAttrib();
+	auto_summation->set_disp_level(Tango::EXPERT);
+	att_list.push_back(auto_summation);
 
 	//	Attribute : compression
 	compressionAttrib	*compression = new compressionAttrib();
 	Tango::UserDefaultAttrProp	compression_prop;
-	compression_prop.set_label("Compression");
-	compression_prop.set_description("Controls the compression of images");
+	compression_prop.set_unit(" ");
+	compression_prop.set_description("Controls the compression of images.[Default= ON]");
 	compression->set_default_properties(compression_prop);
 	compression->set_disp_level(Tango::EXPERT);
 	att_list.push_back(compression);
+
+	//	Attribute : compressionType
+	compressionTypeAttrib	*compression_type = new compressionTypeAttrib();
+	Tango::UserDefaultAttrProp	compression_type_prop;
+	compression_type_prop.set_description("The compression type can be set as follows :\n- LZ4\n- BSLZ4\n\n\n");
+	compression_type->set_default_properties(compression_type_prop);
+	compression_type->set_disp_level(Tango::EXPERT);
+	att_list.push_back(compression_type);
+
+	//	Attribute : softwareVersion
+	softwareVersionAttrib	*software_version = new softwareVersionAttrib();
+	software_version->set_disp_level(Tango::EXPERT);
+	att_list.push_back(software_version);
+
+	//	Attribute : nbTriggers
+	nbTriggersAttrib	*nb_triggers = new nbTriggersAttrib();
+	Tango::UserDefaultAttrProp	nb_triggers_prop;
+	nb_triggers_prop.set_unit(" ");
+	nb_triggers_prop.set_standard_unit(" ");
+	nb_triggers_prop.set_display_unit(" ");
+	nb_triggers_prop.set_description("Define the number of triggers expected by the detector to terminate the acquisition.<br>\nThe detector stays armed until nbTriggers are received.<br>\nAvailable only for the triggers modes :<br>\nINTERNAL_SINGLE (ints).<br>\nEXTERNAL_SINGLE (exts)  triggers modes.<br>");
+	nb_triggers->set_default_properties(nb_triggers_prop);
+	nb_triggers->set_disp_level(Tango::EXPERT);
+	att_list.push_back(nb_triggers);
+
+	//	Attribute : nbFramesPerTrigger
+	nbFramesPerTriggerAttrib	*nb_frames_per_trigger = new nbFramesPerTriggerAttrib();
+	Tango::UserDefaultAttrProp	nb_frames_per_trigger_prop;
+	nb_frames_per_trigger_prop.set_unit(" ");
+	nb_frames_per_trigger_prop.set_standard_unit(" ");
+	nb_frames_per_trigger_prop.set_display_unit(" ");
+	nb_frames_per_trigger_prop.set_description("Define the number of frames acquired by the detector for each received trigger.\nAvailable only for the triggers modes :<br>\nINTERNAL_SINGLE (ints).<br>\nEXTERNAL_SINGLE (exts)  triggers modes.<br>\n");
+	nb_frames_per_trigger->set_default_properties(nb_frames_per_trigger_prop);
+	nb_frames_per_trigger->set_disp_level(Tango::EXPERT);
+	att_list.push_back(nb_frames_per_trigger);
 
 	//	End of Automatic code generation
 	//-------------------------------------------------------------
@@ -378,11 +642,56 @@ void EigerClass::set_default_property()
 	else
 		add_wiz_dev_prop(prop_name, prop_desc);
 
-	prop_name = "TargetPath";
-	prop_desc = "Path where the Eiger lima plugin will download the file acquired during the last\nacquisition. (ex: /tmp )";
-	prop_def  = "not_defined";
+	prop_name = "TimestampType";
+	prop_desc = "Define the timestamp type of each frame: <br>\n- RELATIVE : The time difference between the moment of reading the frame and the start acquisition time<br>\n- ABSOLUTE : The time at the moment of reading the frame from detector<br>";
+	prop_def  = "RELATIVE";
 	vect_data.clear();
-	vect_data.push_back("not_defined");
+	vect_data.push_back("RELATIVE");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "CurlDelayMs";
+	prop_desc = "Curl delay in ms. this is used as a sleep delay for waiting the curl responses (default = 100)";
+	prop_def  = "100";
+	vect_data.clear();
+	vect_data.push_back("100");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "DownloadDataFile";
+	prop_desc = "Enable/Disable downloading data files from DCU.\nDo not download data files (master+data) [by default]";
+	prop_def  = "false";
+	vect_data.clear();
+	vect_data.push_back("false");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "NbFramesPerTriggerIsMaster";
+	prop_desc = "If True: nbFrames = memorized values of NbTriggers * NbFramesPerTrigger (case on PX1 beamline)\nIf False: nbFrames = memorized nbFrames (case on Swing, Sixs beamlines)";
+	prop_def  = "false";
+	vect_data.clear();
+	vect_data.push_back("false");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -394,7 +703,7 @@ void EigerClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "MemorizedCountrateCorrection";
-	prop_desc = "Stores the value of countrateCorrection";
+	prop_desc = "Memorize the value of countrateCorrection attribute.";
 	prop_def  = "false";
 	vect_data.clear();
 	vect_data.push_back("false");
@@ -409,7 +718,7 @@ void EigerClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "MemorizedFlatfieldCorrection";
-	prop_desc = "Stores the value of flatfieldCorrection";
+	prop_desc = "Memorize the value of flatfieldCorrection attribute.";
 	prop_def  = "true";
 	vect_data.clear();
 	vect_data.push_back("true");
@@ -424,7 +733,7 @@ void EigerClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "MemorizedPixelMask";
-	prop_desc = "Stores the value of pixelMask";
+	prop_desc = "Memorize the value of pixelMask attribute.";
 	prop_def  = "false";
 	vect_data.clear();
 	vect_data.push_back("false");
@@ -439,40 +748,10 @@ void EigerClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "MemorizedVirtualPixelCorrection";
-	prop_desc = "Stores the value of virtualPixelCorrection";
+	prop_desc = "Memorize the value of virtualPixelCorrection attribute.";
 	prop_def  = "false";
 	vect_data.clear();
 	vect_data.push_back("false");
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-
-	prop_name = "MemorizedEfficiencyCorrection";
-	prop_desc = "Stores the value of efficiencyCorrection";
-	prop_def  = "false";
-	vect_data.clear();
-	vect_data.push_back("false");
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-
-	prop_name = "MemorizedThresholdEnergy";
-	prop_desc = "Stores the value of thresholdEnergy";
-	prop_def  = "4000.0";
-	vect_data.clear();
-	vect_data.push_back("4000.0");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -484,7 +763,7 @@ void EigerClass::set_default_property()
 		add_wiz_dev_prop(prop_name, prop_desc);
 
 	prop_name = "MemorizedPhotonEnergy";
-	prop_desc = "Stores the value of photonEnergy";
+	prop_desc = "Memorize the value of photonEnergy attribute.";
 	prop_def  = "8000.0";
 	vect_data.clear();
 	vect_data.push_back("8000.0");
@@ -498,11 +777,251 @@ void EigerClass::set_default_property()
 	else
 		add_wiz_dev_prop(prop_name, prop_desc);
 
-	prop_name = "MemorizedCompression";
-	prop_desc = "Stores the value of compression";
+	prop_name = "MemorizedAutoSummation";
+	prop_desc = "Memorize the value of autoSummation attribute.";
 	prop_def  = "true";
 	vect_data.clear();
 	vect_data.push_back("true");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedCompression";
+	prop_desc = "Memorize the value of compression attribute.";
+	prop_def  = "true";
+	vect_data.clear();
+	vect_data.push_back("true");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedCompressionType";
+	prop_desc = "Memorize the value of compressionType attribute.";
+	prop_def  = "LZ4";
+	vect_data.clear();
+	vect_data.push_back("LZ4");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedRoiMode";
+	prop_desc = "Memorize the value of roiMode attribute.";
+	prop_def  = "DISABLED";
+	vect_data.clear();
+	vect_data.push_back("DISABLED");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedBeamCenterX";
+	prop_desc = "Memorize the value of beamCenterX attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedBeamCenterY";
+	prop_desc = "Memorize the value of beamCenterY attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedDetectorDistance";
+	prop_desc = "Memorize the value of detectorDistance attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedChiIncrement";
+	prop_desc = "Memorize the value of chiIncrement attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedChiStart";
+	prop_desc = "Memorize the value of chiStart attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedKappaIncrement";
+	prop_desc = "Memorize the value of kappaIncrement attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedKappaStart";
+	prop_desc = "Memorize the value of kappaStart attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedOmegaIncrement";
+	prop_desc = "Memorize the value of omegaIncrement attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedOmegaStart";
+	prop_desc = "Memorize the value of omegaStart attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedPhiIncrement";
+	prop_desc = "Memorize the value of phiIncrement attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedPhiStart";
+	prop_desc = "Memorize the value of phiStart attribute.";
+	prop_def  = "0";
+	vect_data.clear();
+	vect_data.push_back("0");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedNbTriggers";
+	prop_desc = "Memorize the value of nbTriggers attribute.";
+	prop_def  = "1";
+	vect_data.clear();
+	vect_data.push_back("1");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+
+	prop_name = "MemorizedNbFramesPerTrigger";
+	prop_desc = "Memorize the value of nbFramesPerTrigger attribute.";
+	prop_def  = "1";
+	vect_data.clear();
+	vect_data.push_back("1");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);

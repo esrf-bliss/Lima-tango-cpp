@@ -298,5 +298,25 @@ bool PilatusPixelDetector::is_SetEnergy_allowed(const CORBA::Any &any)
 	}
 	return true;
 }
+//+----------------------------------------------------------------------------
+//
+// method : 		PilatusPixelDetector::is_GetTH_allowed
+// 
+// description : 	Execution allowed for GetTH command.
+//
+//-----------------------------------------------------------------------------
+bool PilatusPixelDetector::is_GetTH_allowed(const CORBA::Any &any)
+{
+	if (get_state() == Tango::INIT	||
+		get_state() == Tango::FAULT	||
+		get_state() == Tango::RUNNING)
+	{
+		//	End of Generated Code
+
+		//	Re-Start of Generated Code
+		return false;
+	}
+	return true;
+}
 
 }	// namespace PilatusPixelDetector_ns

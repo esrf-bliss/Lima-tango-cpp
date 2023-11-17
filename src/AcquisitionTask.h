@@ -20,10 +20,11 @@
 #include <tango.h>
 #include <yat/threading/Mutex.h>
 #include <yat4tango/DeviceTask.h>
-#include <TangoExceptionsHelper.h>
+//#include <TangoExceptionsHelper.h>
 #endif
 
 //- LIMA
+#include "Factory.h"
 #include "lima/CtControl.h"
 #include "lima/CtVideo.h"
 

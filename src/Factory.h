@@ -1,6 +1,6 @@
 //+=============================================================================
 //
-// file :         Factory.cpp
+// file :         Factory.h
 //
 // description : Include for Factory.cpp
 //
@@ -21,24 +21,21 @@
 #include <lima/CtControl.h>
 #include "lima/Debug.h"
 #include <yat/threading/Mutex.h>
+#include <yat/utils/Logging.h>
 
 
 #ifdef SIMULATOR_ENABLED
 #include <SimulatorInterface.h>
 #endif
 
-#ifdef AVIEX_ENABLED  
-#include <AviexCamera.h>
-#include <AviexDetInfoCtrlObj.h>
-#include <AviexSyncCtrlObj.h>
-#include <AviexRoiCtrlObj.h>
-#include <AviexBinCtrlObj.h>
-#include <AviexInterface.h>
-#endif
-
 #ifdef BASLER_ENABLED  
 #include <BaslerInterface.h>
 #include <BaslerCamera.h>
+#endif
+
+#ifdef IMXPAD_ENABLED
+#include <imXpadInterface.h>
+#include <imXpadCamera.h>
 #endif
 
 #ifdef XPAD_ENABLED
@@ -53,17 +50,23 @@
 #include <MarccdInterface.h>
 #endif
 
-#ifdef ADSC_ENABLED
-#include <AdscInterface.h>
+#ifdef MAXIPIX_ENABLED
+#include <MaxipixInterface.h>
 #endif
 
-#ifdef PROSILICA_ENABLED
-#include <ProsilicaInterface.h>
-#include <ProsilicaCamera.h>
-#include <ProsilicaDetInfoCtrlObj.h>
-#include <ProsilicaBufferCtrlObj.h>
-#include <ProsilicaVideoCtrlObj.h>
-#include <ProsilicaSyncCtrlObj.h>   
+#ifdef MERLIN_ENABLED
+#include <MerlinCamera.h>
+#include <MerlinInterface.h>
+#endif
+
+#ifdef SPECTRUMONE_ENABLED
+#include <SpectrumOneInterface.h>
+#include <SpectrumOneCamera.h>
+#include <SpectrumOneRoiCtrlObj.h>
+#include <SpectrumOneDetInfoCtrlObj.h>
+#include <SpectrumOneSyncCtrlObj.h>
+#include <SpectrumOneEventCtrlObj.h>
+#include <SpectrumOneBinCtrlObj.h>
 #endif
 
 #ifdef ANDOR_ENABLED
@@ -107,12 +110,6 @@
 #include <Andor3SyncCtrlObj.h>    
 #endif
 
-#ifdef MERLIN_ENABLED
-#include <MerlinCamera.h>
-#include <MerlinInterface.h>
-#endif
-
-
 #ifdef VIEWORKSVP_ENABLED
 #include <VieworksVPBinCtrlObj.h>
 #include <VieworksVPCamera.h>
@@ -147,6 +144,45 @@
 #include <UviewRoiCtrlObj.h>
 #endif
 
+#ifdef SLSJUNGFRAU_ENABLED
+#include <SlsJungfrauCamera.h>
+#include <SlsJungfrauInterface.h>
+#endif
+
+#ifdef SLSEIGER_ENABLED
+#include <SlsEigerCamera.h>
+#include <SlsEigerInterface.h>
+#endif
+
+#ifdef SPECTRALINSTRUMENT_ENABLED  
+#include <SpectralInstrumentCamera.h>
+#include <SpectralInstrumentInterface.h>
+#endif
+
+#ifdef LAMBDA_ENABLED
+#include <LambdaCamera.h>
+#include <LambdaInterface.h>
+#endif
+
+#ifdef DHYANA_ENABLED
+#include <DhyanaCamera.h>
+#include <DhyanaInterface.h>
+#endif
+
+#ifdef DHYANA6060_ENABLED
+#include <Dhyana6060Camera.h>
+#include <Dhyana6060Interface.h>
+#endif
+
+#ifdef UFXC_ENABLED
+#include <UfxcCamera.h>
+#include <UfxcInterface.h>
+#endif
+
+//ProcessLib/Data : define dimensions of image
+#define WIDTH_INDEX   0
+#define HEIGHT_INDEX  1
+
 using namespace lima;
 
 class ControlFactory : public Singleton<ControlFactory>
@@ -155,32 +191,38 @@ class ControlFactory : public Singleton<ControlFactory>
     friend class Singleton<ControlFactory>;    
 public:
 
-    //create the main object of Lima CtConttrol
+    ///create the main object of Lima CtConttrol
     CtControl* create_control(const std::string& detector_type);
 
-    //get the main object of Lima CtConttrol
+    ///get the main object of Lima CtConttrol
     CtControl* get_control(const std::string& type = "");
 
-    //initialize all pointers
+    ///initialize all pointers
     void reset(const std::string& detector_type);
 
-    //init the specific device, necessary when user call Init on generic device
+    ///init the specific device, necessary when user call Init on generic device
     void init_specific_device(const std::string& detector_type);
 
-    //get the state in a AutoMutex lock
+    ///get the state in a AutoMutex lock
     Tango::DevState get_state(void);
 
-    //get the status in a AutoMutex lock
+    ///get the status in a AutoMutex lock
     std::string get_status(void);
 
-    //fix the state in a AutoMutex lock
+    ///fix the state in a AutoMutex lock
     void set_state(Tango::DevState state);
 
-    //fix the status in a AutoMutex lock
+    ///fix the status in a AutoMutex lock
     void set_status(const std::string& status);
 
-    //return to the client the global mutex, in order to use ctControl in a scoped lock
+    ///fix the event status in a AutoMutex lock
+    void set_event_status(const std::string& status);
+	
+    ///return to the client the global mutex, in order to use ctControl in a scoped lock
     yat::Mutex& get_global_mutex();
+
+    ///fix the state of the specific device
+    void set_specific_state(Tango::DevState specific_state);
 
 private:
     ControlFactory(const ControlFactory&) { }
@@ -188,13 +230,19 @@ private:
     ~ControlFactory(){}
     void initialize();
 
+    //lima stuff
+    //-------------
+    ///generic pointer, must be casted to real XXX::Camera when using it !
+    void*                           m_camera;
+    ///generic pointer, must be casted to real XXX::Interface when using it !
+    void*                           m_interface;   
+    ///the main object of Lima
+    lima::CtControl* m_control; 
 
-    void*                           m_camera;      //generic pointer, must be casted to real XXX::Camera when using it !
-    void*                           m_interface;   //generic pointer, must be casted to real XXX::Interface when using it !
-    lima::CtControl* m_control; //the main object of Lima
-
+    //device tango stuff
+    //--------------------
     static bool                     m_is_created;
-    std::string                     m_server_name;
+    std::string                     m_device_name_generic;
     std::string                     m_device_name_specific;
 #ifdef LAYOUT_ENABLED    
     std::string                     m_device_name_layout;
@@ -202,14 +250,17 @@ private:
 #ifdef ROICOUNTERS_ENABLED    
     std::string                     m_device_name_roicounters;
 #endif        
+#ifdef MASK_ENABLED    
+    std::string                     m_device_name_mask;
+#endif      
     Tango::DevState                 m_state;
     stringstream                    m_status;
+    stringstream                    m_event_status;	
 
     //lock the singleton acess
-    yat::Mutex                      object_control_lock;
+    yat::Mutex                      m_lock;
 
-    //lock the singleton acess
-    yat::Mutex                      object_state_lock;
+    Tango::DevState                 m_specific_state;
 
 } ;
 

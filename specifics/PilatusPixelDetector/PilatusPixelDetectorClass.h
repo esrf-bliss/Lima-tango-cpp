@@ -125,6 +125,30 @@ public:
 //=========================================
 //	Define classes for commands
 //=========================================
+class GetTHCmd : public Tango::Command
+{
+public:
+	GetTHCmd(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	GetTHCmd(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~GetTHCmd() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<PilatusPixelDetector *>(dev))->is_GetTH_allowed(any);}
+};
+
+
+
 class SendAnyCommandCmd : public Tango::Command
 {
 public:

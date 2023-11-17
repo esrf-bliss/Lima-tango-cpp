@@ -104,7 +104,10 @@ void PrincetonCCD::delete_device()
     DELETE_SCALAR_ATTRIBUTE(attr_gain_read);    
 	DELETE_DEVSTRING_ATTRIBUTE(attr_internalAcquisitionMode_read);	
 	DELETE_DEVSTRING_ATTRIBUTE(attr_shutterMode_read);		
-	DELETE_DEVSTRING_ATTRIBUTE(attr_currentRate_read);		
+	DELETE_DEVSTRING_ATTRIBUTE(attr_currentRate_read);
+
+    INFO_STREAM << "Remove the inner-appender." << endl;
+    yat4tango::InnerAppender::release(this);
 
     //    Delete device allocated objects
 
@@ -139,6 +142,9 @@ void PrincetonCCD::init_device()
     m_is_device_initialized = false;
     set_state(Tango::INIT);
     m_status_message.str("");
+
+    INFO_STREAM << "Create the inner-appender in order to manage logs." << endl;  
+    yat4tango::InnerAppender::initialize(this, 512);
 
     try
     {
@@ -471,9 +477,8 @@ void PrincetonCCD::write_internalAcquisitionMode(Tango::WAttribute &attr)
 		/*TODO enhance CONTINUOUS*/
         if(current.compare("STANDARD")!=0 && current.compare("FOCUS")!=0/*&& current.compare("CONTINUOUS")!=0 */)
         {
-            m_acquisition_mode = previous;            
-            strcpy (attr_internalAcquisitionMode_write, m_acquisition_mode.c_str());
-
+            m_acquisition_mode = previous;
+            attr_internalAcquisitionMode_write = const_cast<Tango::DevString>(m_acquisition_mode.c_str());
             Tango::Except::throw_exception( (const char*) ("CONFIGURATION_ERROR"),
                                             /*(const char*) ("Available Internal Acquisition Modes are: \n- STANDARD \n- CONTINUOUS \n- FOCUS"),*/
 											(const char*) ("Available Internal Acquisition Modes are: \n- STANDARD\n- FOCUS"),
@@ -574,9 +579,7 @@ void PrincetonCCD::write_shutterMode(Tango::WAttribute &attr)
         if(current.compare("OPEN_NEVER")!=0 && current.compare("OPEN_PRE_EXPOSURE")!=0 && current.compare("OPEN_NO_CHANGE")!=0)
         {
             m_shutter_mode = previous;
-            attr_shutterMode_write = new char [m_shutter_mode.size()+1];
-            strcpy (attr_shutterMode_write, m_shutter_mode.c_str());
-
+            attr_shutterMode_write = const_cast<Tango::DevString>(m_shutter_mode.c_str());
             Tango::Except::throw_exception( (const char*) ("CONFIGURATION_ERROR"),
                                             /*(const char*) ("Available Internal Acquisition Modes are: \n- OPEN_NEVER \n- OPEN_PRE_EXPOSURE \n- OPEN_NO_CHANGE"),*/
 											(const char*) ("Available Shutter Modes are: \n- OPEN_NEVER \n- OPEN_PRE_EXPOSURE \n- OPEN_NO_CHANGE"),

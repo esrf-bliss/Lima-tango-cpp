@@ -109,6 +109,9 @@ void SimulatorCCD::delete_device()
     //    Delete device allocated objects
     DELETE_SCALAR_ATTRIBUTE(attr_growFactor_read);
     DELETE_DEVSTRING_ATTRIBUTE(attr_fillType_read);
+	
+	INFO_STREAM << "Remove the inner-appender." << endl;
+	yat4tango::InnerAppender::release(this);	
 }
 
 //+----------------------------------------------------------------------------
@@ -134,6 +137,11 @@ void SimulatorCCD::init_device()
     m_is_device_initialized = false;
     m_status_message.str("");
 
+	//- instanciate the appender in order to manage logs
+	INFO_STREAM << "Create the inner-appender in order to manage logs." << endl;
+	yat4tango::InnerAppender::initialize(this, 512);	
+	
+	
     try
     {
         //- get the main object used to pilot the lima framework
@@ -216,8 +224,7 @@ void SimulatorCCD::get_device_property()
 	//	Try to initialize MemorizedFillType from class property
 	cl_prop = ds_class->get_class_property(dev_prop[++i].name);
 	if (cl_prop.is_empty()==false)	cl_prop  >>  memorizedFillType;
-    else
-    {
+	else {
 		//	Try to initialize MemorizedFillType from default device value
 		def_prop = ds_class->get_default_device_property(dev_prop[i].name);
 		if (def_prop.is_empty()==false)	def_prop  >>  memorizedFillType;
@@ -228,8 +235,7 @@ void SimulatorCCD::get_device_property()
 	//	Try to initialize MemorizedGrowFactor from class property
 	cl_prop = ds_class->get_class_property(dev_prop[++i].name);
 	if (cl_prop.is_empty()==false)	cl_prop  >>  memorizedGrowFactor;
-    else
-    {
+	else {
 		//	Try to initialize MemorizedGrowFactor from default device value
 		def_prop = ds_class->get_default_device_property(dev_prop[i].name);
 		if (def_prop.is_empty()==false)	def_prop  >>  memorizedGrowFactor;
@@ -305,6 +311,144 @@ void SimulatorCCD::read_attr_hardware(vector<long> &attr_list)
 }
 //+----------------------------------------------------------------------------
 //
+// method : 		SimulatorCCD::read_xOffset
+// 
+// description :  	Reads the offsets on X axis position.
+//
+//-----------------------------------------------------------------------------
+void SimulatorCCD::read_xOffset(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "SimulatorCCD::read_xOffset(Tango::Attribute &attr) entering... "<< endl;
+  
+   try
+    {
+        attr.set_value(&attr_xOffset_write);
+    }
+    catch (Tango::DevFailed& df)
+    {
+        ERROR_STREAM << df << endl;
+        //- rethrow exception
+        Tango::Except::re_throw_exception(df,
+                                          "TANGO_DEVICE_ERROR",
+                                          string(df.errors[0].desc).c_str(),
+                                          "SimulatorCCD::read_xOffset");
+    }
+    catch (Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception("TANGO_DEVICE_ERROR",
+                                       e.getErrMsg().c_str(),
+                                       "SimulatorCCD::read_xOffset");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		SimulatorCCD::write_xOffset
+// 
+// description : Sets an offset on X axis position
+//
+//-----------------------------------------------------------------------------
+void SimulatorCCD::write_xOffset(Tango::WAttribute &attr)
+{
+	DEBUG_STREAM << "SimulatorCCD::write_xOffset(Tango::WAttribute &attr) entering... "<< endl;
+  try
+  {
+      attr.get_write_value(attr_xOffset_write);
+      m_camera->computeNewXOffset(attr_xOffset_write);
+  }
+  catch (Tango::DevFailed& df)
+  {
+      ERROR_STREAM << df << endl;
+      //- rethrow exception
+      Tango::Except::re_throw_exception(df,
+                                        "TANGO_DEVICE_ERROR",
+                                        string(df.errors[0].desc).c_str(),
+                                        "SimulatorCCD::write_xOffset");
+  }
+  catch (Exception& e)
+  {
+      ERROR_STREAM << e.getErrMsg() << endl;
+      //- throw exception
+      Tango::Except::throw_exception("TANGO_DEVICE_ERROR",
+                                     e.getErrMsg().c_str(),
+                                     "SimulatorCCD::write_xOffset");
+  }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		SimulatorCCD::read_yOffset
+// 
+// description : 	Reads the offsets on Y axis position.
+//
+//-----------------------------------------------------------------------------
+void SimulatorCCD::read_yOffset(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "SimulatorCCD::read_yOffset(Tango::Attribute &attr) entering... "<< endl;
+  
+    try
+    {
+        attr.set_value(&attr_yOffset_write);
+    }
+    catch (Tango::DevFailed& df)
+    {
+        ERROR_STREAM << df << endl;
+        //- rethrow exception
+        Tango::Except::re_throw_exception(df,
+                                          "TANGO_DEVICE_ERROR",
+                                          string(df.errors[0].desc).c_str(),
+                                          "SimulatorCCD::read_yOffset");
+    }
+    catch (Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception("TANGO_DEVICE_ERROR",
+                                       e.getErrMsg().c_str(),
+                                       "SimulatorCCD::read_yOffset");
+    }
+}
+
+//+----------------------------------------------------------------------------
+//
+// method : 		SimulatorCCD::write_yOffset
+// 
+// description : 	Sets an offset on y axis position.
+//
+//-----------------------------------------------------------------------------
+void SimulatorCCD::write_yOffset(Tango::WAttribute &attr)
+{
+	DEBUG_STREAM << "SimulatorCCD::write_yOffset(Tango::WAttribute &attr) entering... "<< endl;
+  
+    try
+    {
+        attr.get_write_value(attr_yOffset_write);
+        m_camera->computeNewYOffset(attr_yOffset_write);
+    }
+    catch (Tango::DevFailed& df)
+    {
+        ERROR_STREAM << df << endl;
+        //- rethrow exception
+        Tango::Except::re_throw_exception(df,
+                                          "TANGO_DEVICE_ERROR",
+                                          string(df.errors[0].desc).c_str(),
+                                          "SimulatorCCD::write_yOffset");
+    }
+    catch (Exception& e)
+    {
+        ERROR_STREAM << e.getErrMsg() << endl;
+        //- throw exception
+        Tango::Except::throw_exception("TANGO_DEVICE_ERROR",
+                                       e.getErrMsg().c_str(),
+                                       "SimulatorCCD::write_yOffset");
+    }
+
+}
+
+//+----------------------------------------------------------------------------
+//
 // method : 		SimulatorCCD::read_fillType
 //
 // description : 	Extract real attribute values for fillType acquisition result.
@@ -322,10 +466,10 @@ void SimulatorCCD::read_fillType(Tango::Attribute &attr)
 
         switch (eFillType)
         {
-            case Simulator::FrameBuilder::FillType::Gauss:
+            case Simulator::FrameBuilder::Gauss:
                 strFillType = STR_GAUSS;
                 break;
-            case Simulator::FrameBuilder::FillType::Diffraction:
+            case Simulator::FrameBuilder::Diffraction:
                 strFillType = STR_DIFFRACTION;
                 break;
             default:
@@ -379,8 +523,8 @@ void SimulatorCCD::write_fillType(Tango::WAttribute &attr)
         if ((current != STR_GAUSS) &&
             (current != STR_DIFFRACTION)
             )
-        {            
-            strcpy(attr_fillType_write, m_fillType.c_str());
+        {
+            attr_fillType_write = const_cast<Tango::DevString>(m_fillType.c_str());
             Tango::Except::throw_exception("CONFIGURATION_ERROR",
                                            "Possible fillType values are:"
                                            "\n- GAUSS"
@@ -392,10 +536,9 @@ void SimulatorCCD::write_fillType(Tango::WAttribute &attr)
         m_fillType = current;
 
         if (STR_GAUSS == m_fillType)
-            m_camera->getFrameBuilder()->setFillType(Simulator::FrameBuilder::FillType::Gauss);
+            m_camera->getFrameBuilder()->setFillType(Simulator::FrameBuilder::Gauss);
         else if (STR_DIFFRACTION == m_fillType)
-            m_camera->getFrameBuilder()->setFillType(Simulator::FrameBuilder::FillType::Diffraction);
-		
+            m_camera->getFrameBuilder()->setFillType(Simulator::FrameBuilder::Diffraction);		
         yat4tango::PropertyHelper::set_property(this, "MemorizedFillType", m_fillType);
     }
     catch (Tango::DevFailed& df)
@@ -540,5 +683,7 @@ Tango::DevState SimulatorCCD::dev_state()
     DEBUG_STREAM << "SimulatorCCD::dev_state() ending... " << endl;
     return argout;
 }
+
+
 
 }	//	namespace

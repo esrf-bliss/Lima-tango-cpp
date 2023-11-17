@@ -48,7 +48,7 @@ Properties Description 		<Br> <Br>
 Hamamatsu Class	<Br>
 </h1>
 <b>
-Revision:  - Author: 
+Revision:  - Author: cedric.castel
 </b>
 </center>
 
@@ -71,7 +71,36 @@ Revision:  - Author:
 <Td><Font Size=-1>Memorize/Define the readoutSpeed attribute at Init device<br>
 Availables values :<br>
 NORMAL<br>
-FAST<br></Font></Td></Tr>
+SLOW<br></Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>BlankOfSyncreadoutTrigger </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_STRING</Font></Td>
+<Td><Font Size=-1>Allows you to select the blank of synreadout:<BR>
+Availables values :<br>
+- STANDARD<BR>
+- MINIMUM<BR>
+</Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedTopViewExposureTime </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_DOUBLE</Font></Td>
+<Td><Font Size=-1>Memorize/Define the Top View exposure time attribute at Init device<br></Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedBottomViewExposureTime </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_DOUBLE</Font></Td>
+<Td><Font Size=-1>Memorize/Define the Bottom View exposure time attribute at Init device<br></Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedWViewEnabled </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_BOOLEAN</Font></Td>
+<Td><Font Size=-1>Memorize/Define the W-VIEW mode attribute at Init device<br></Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>MemorizedHighDynamicRangeEnabled </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_BOOLEAN</Font></Td>
+<Td><Font Size=-1>Memorize/Define the HighDynamicRangeEnabled attribute at Init device<br></Font></Td></Tr>
+
+<Tr><Td><b><a href=#Dev_DefaultValues>ExpertFrameBufferSize </a></b></Td>
+<Td><Font Size=-1>Tango::DEV_LONG</Font></Td>
+<Td><Font Size=-1>Only an expert User could change this property.<br>
+This is the DCAM frame buffer size used during the acquisition.<BR></Font></Td></Tr>
 
 </Table>
 
@@ -93,6 +122,30 @@ FAST<br></Font></Td></Tr>
     <Tr>
         <Td>MemorizedReadoutSpeed</Td>
         <td>NORMAL</td>
+    </Tr>
+    <Tr>
+        <Td>BlankOfSyncreadoutTrigger</Td>
+        <td>STANDARD</td>
+    </Tr>
+    <Tr>
+        <Td>MemorizedTopViewExposureTime</Td>
+        <td>1000</td>
+    </Tr>
+    <Tr>
+        <Td>MemorizedBottomViewExposureTime</Td>
+        <td>1000</td>
+    </Tr>
+    <Tr>
+        <Td>MemorizedWViewEnabled</Td>
+        <td>false</td>
+    </Tr>
+    <Tr>
+        <Td>MemorizedHighDynamicRangeEnabled</Td>
+        <td>false</td>
+    </Tr>
+    <Tr>
+        <Td>ExpertFrameBufferSize</Td>
+        <td>10</td>
     </Tr>
 </Table>
 
